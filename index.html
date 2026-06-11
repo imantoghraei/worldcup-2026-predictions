@@ -203,6 +203,19 @@ button{cursor:pointer;font-family:inherit}
 .custom-join-row input:focus{border-color:var(--gold)}
 .custom-join-row input::placeholder{color:var(--dim)}
 .custom-join-row button{background:var(--gold);color:#000;border:none;padding:.75rem 1rem;border-radius:10px;font-size:.9rem;font-weight:700;font-family:inherit;white-space:nowrap}
+
+/* ── به‌روزرسانی آنلاین نتایج ── */
+.online-score-panel{background:linear-gradient(135deg,rgba(26,122,63,.18),rgba(240,165,0,.10));border:1px solid rgba(240,165,0,.35);border-radius:14px;padding:.85rem .9rem;margin:.55rem 0 .9rem;direction:rtl}
+.online-score-title{font-size:.88rem;font-weight:900;color:var(--gold);margin-bottom:.35rem;display:flex;align-items:center;gap:.35rem}
+.online-score-text{font-size:.74rem;color:var(--dim);line-height:1.65;margin-bottom:.65rem}
+.online-score-actions{display:flex;gap:.45rem;flex-wrap:wrap}
+.online-score-btn{border:none;border-radius:10px;background:var(--gold);color:#000;font-family:inherit;font-size:.78rem;font-weight:800;padding:.55rem .8rem;cursor:pointer}
+.online-score-btn.secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.online-score-btn:disabled{opacity:.6;cursor:wait}
+.online-score-status{font-size:.7rem;color:var(--dim);margin-top:.55rem;line-height:1.6}
+.online-score-status.ok{color:var(--green-light)}
+.online-score-status.err{color:var(--red)}
+
 </style>
 </head>
 <body>
@@ -7188,6 +7201,197 @@ function adjustKo(matchId, team, delta) {
   if (old && m) old.replaceWith(buildKoCard(m));
 }
 
+
+// ── دریافت خودکار نتایج از اینترنت ──
+// This source works on GitHub Pages without an API key. It is not guaranteed to be live;
+// it fills the "real scores" section only when the upstream JSON already contains final scores.
+const ONLINE_SCORE_SOURCE = {
+  name: 'OpenFootball World Cup JSON',
+  url: 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
+};
+
+function normalizeTeamKey(name) {
+  return String(name || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&amp;/g, 'and')
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function canonicalTeamKey(name) {
+  const key = normalizeTeamKey(name);
+  const aliases = {
+    // Korea / Czechia
+    southkorea: 'repofkorea',
+    korearepublic: 'repofkorea',
+    republicofkorea: 'repofkorea',
+    czechrepublic: 'czechrep',
+    czechia: 'czechrep',
+
+    // USA / Iran / Ivory Coast
+    unitedstates: 'usa',
+    unitedstatesofamerica: 'usa',
+    usmnt: 'usa',
+    iran: 'iriran',
+    islamicrepublicofiran: 'iriran',
+    coteivoire: 'ivorycoast',
+    cotedivoire: 'ivorycoast',
+    ctedivoire: 'ivorycoast',
+
+    // Country-name variants
+    bosniaandherzegovina: 'bosniaherzeg',
+    bosniaherzegovina: 'bosniaherzeg',
+    bosniaherzeg: 'bosniaherzeg',
+    demrepcongo: 'drcongo',
+    democraticrepublicofthecongo: 'drcongo',
+    congodr: 'drcongo',
+    drcongo: 'drcongo',
+    caboverde: 'capeverde',
+    turkiye: 'turkey',
+    curacao: 'curacao'
+  };
+  return aliases[key] || key;
+}
+
+function localMatchLookup() {
+  const lookup = {};
+  MATCHES.forEach(m => {
+    const direct = `${canonicalTeamKey(m.t1)}|${canonicalTeamKey(m.t2)}`;
+    const reverse = `${canonicalTeamKey(m.t2)}|${canonicalTeamKey(m.t1)}`;
+    lookup[direct] = { id: m.id, reversed: false };
+    lookup[reverse] = { id: m.id, reversed: true };
+  });
+  return lookup;
+}
+
+function extractOnlineFinalScore(match) {
+  if (!match) return null;
+  const score = match.score || match.scores || null;
+  let arr = null;
+
+  if (score) {
+    if (Array.isArray(score.ft)) arr = score.ft;
+    else if (Array.isArray(score.fulltime)) arr = score.fulltime;
+    else if (Array.isArray(score.fullTime)) arr = score.fullTime;
+    else if (score.ft && typeof score.ft === 'object' && score.ft.home !== undefined) arr = [score.ft.home, score.ft.away];
+    else if (score.fullTime && typeof score.fullTime === 'object' && score.fullTime.home !== undefined) arr = [score.fullTime.home, score.fullTime.away];
+    else if (typeof score.ft === 'string') {
+      const m = score.ft.match(/(\d+)\s*[-–:]\s*(\d+)/);
+      if (m) arr = [m[1], m[2]];
+    }
+  }
+
+  if (!arr && match.score1 !== undefined && match.score2 !== undefined) arr = [match.score1, match.score2];
+  if (!arr || arr.length < 2) return null;
+
+  const s1 = Number(arr[0]);
+  const s2 = Number(arr[1]);
+  if (!Number.isFinite(s1) || !Number.isFinite(s2)) return null;
+  return [s1, s2];
+}
+
+function addOnlineScorePanel(container) {
+  const last = localStorage.getItem('wc2026_real_last_online_update') || 'هنوز انجام نشده';
+  const panel = document.createElement('div');
+  panel.className = 'online-score-panel';
+  panel.innerHTML = `
+    <div class="online-score-title">🌐 به‌روزرسانی خودکار نتایج</div>
+    <div class="online-score-text">
+      با این دکمه، برنامه نتایج موجود در اینترنت را بررسی می‌کند و هر بازی‌ای که نتیجه نهایی‌اش پیدا شود را به‌طور خودکار در «نتایج واقعی» ثبت می‌کند.
+      <br>آخرین بررسی: <strong>${last}</strong>
+    </div>
+    <div class="online-score-actions">
+      <button class="online-score-btn" onclick="updateRealScoresOnline(this)">🔄 دریافت نتایج آنلاین</button>
+      <button class="online-score-btn secondary" onclick="clearRealScores()">🧹 پاک کردن نتایج ثبت‌شده</button>
+    </div>
+    <div class="online-score-status" id="online-score-status">منبع فعلی: ${ONLINE_SCORE_SOURCE.name}</div>
+  `;
+  container.appendChild(panel);
+}
+
+function setOnlineStatus(msg, kind) {
+  const el = document.getElementById('online-score-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `online-score-status ${kind || ''}`;
+}
+
+async function updateRealScoresOnline(btn) {
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'در حال بررسی...';
+  }
+  setOnlineStatus('در حال دریافت نتایج از اینترنت...', '');
+
+  try {
+    const res = await fetch(`${ONLINE_SCORE_SOURCE.url}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const sourceMatches = Array.isArray(data.matches) ? data.matches : [];
+    const lookup = localMatchLookup();
+
+    let foundScores = 0;
+    let changed = 0;
+    let matchedButNoScore = 0;
+
+    sourceMatches.forEach(sm => {
+      const t1 = sm.team1 || sm.homeTeam || sm.home || sm.team_1;
+      const t2 = sm.team2 || sm.awayTeam || sm.away || sm.team_2;
+      if (!t1 || !t2) return;
+
+      const key = `${canonicalTeamKey(t1)}|${canonicalTeamKey(t2)}`;
+      const hit = lookup[key];
+      if (!hit) return;
+
+      const sc = extractOnlineFinalScore(sm);
+      if (!sc) { matchedButNoScore++; return; }
+
+      foundScores++;
+      const finalScore = hit.reversed ? [sc[1], sc[0]] : sc;
+      const old = realScores[hit.id];
+      if (!old || old[0] !== finalScore[0] || old[1] !== finalScore[1]) changed++;
+      realScores[hit.id] = finalScore;
+    });
+
+    saveRealScores();
+
+    const stamp = new Date().toLocaleString('fa-IR');
+    localStorage.setItem('wc2026_real_last_online_update', stamp);
+
+    if (currentFilter === 'real') buildRealView();
+    else if (currentFilter === 'rank') buildRankView();
+    else if (currentFilter === 'all' || currentFilter === 'done' || currentFilter === 'todo') buildMatchList();
+
+    if (foundScores > 0) {
+      showToast(`${foundScores} نتیجه آنلاین ثبت/به‌روزرسانی شد`);
+      setOnlineStatus(`✅ ${foundScores} نتیجه پیدا شد؛ ${changed} مورد جدید/تغییریافته بود.`, 'ok');
+    } else {
+      showToast('فعلاً نتیجه نهایی آنلاین پیدا نشد');
+      setOnlineStatus(`فعلاً نتیجه نهایی در منبع آنلاین نبود. ${matchedButNoScore} بازی با برنامه تطبیق داده شد ولی هنوز score نداشت.`, '');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('خطا در دریافت آنلاین نتایج');
+    setOnlineStatus('❌ دریافت آنلاین ناموفق بود. اتصال اینترنت، محدودیت GitHub یا ساختار منبع را بررسی کنید.', 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔄 دریافت نتایج آنلاین';
+    }
+  }
+}
+
+function clearRealScores() {
+  if (!confirm('همه نتایج واقعی ثبت‌شده پاک شوند؟')) return;
+  realScores = {};
+  saveRealScores();
+  if (currentFilter === 'real') buildRealView();
+  else if (currentFilter === 'rank') buildRankView();
+  else buildMatchList();
+  showToast('نتایج واقعی پاک شد');
+}
+
 function showRealTab() {
   currentFilter = 'real';
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -7210,6 +7414,7 @@ function showRankTab() {
 function buildRealView() {
   const container = document.getElementById('real-view');
   container.innerHTML = '';
+  addOnlineScorePanel(container);
 
   // Section header helper
   function addSectionHeader(label) {
