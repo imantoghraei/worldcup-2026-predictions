@@ -243,13 +243,13 @@ function card(m,n1,n2,f1,f2,tag){
     '<div class="mteams"><span>'+f1+' '+n1+'</span><span style="color:var(--dim)">در برابر</span><span>'+n2+' '+f2+'</span></div>'+
     (set?(
     '<div class="srow">'+
-      '<button class="sbtn" onclick="adj('+m.id+',1,-1)">−</button>'+
-      '<div class="sval" id="v2-'+m.id+'">'+s2+'</div>'+
-      '<button class="sbtn" onclick="adj('+m.id+',1,1)">＋</button>'+
-      '<span class="colon">:</span>'+
       '<button class="sbtn" onclick="adj('+m.id+',0,-1)">−</button>'+
       '<div class="sval" id="v1-'+m.id+'">'+s1+'</div>'+
       '<button class="sbtn" onclick="adj('+m.id+',0,1)">＋</button>'+
+      '<span class="colon">:</span>'+
+      '<button class="sbtn" onclick="adj('+m.id+',1,-1)">−</button>'+
+      '<div class="sval" id="v2-'+m.id+'">'+s2+'</div>'+
+      '<button class="sbtn" onclick="adj('+m.id+',1,1)">＋</button>'+
     '</div>'):'');
   return d;
 }
