@@ -7206,10 +7206,13 @@ function adjustKo(matchId, team, delta) {
 // ── دریافت خودکار نتایج از اینترنت ──
 // This source works on GitHub Pages without an API key. It is not guaranteed to be live;
 // it fills the "real scores" section only when the upstream JSON already contains final scores.
+// ⬇️⬇️⬇️ این آدرس را به مخزن گیت‌هاب خودتان تغییر دهید ⬇️⬇️⬇️
+// قالب: https://raw.githubusercontent.com/USERNAME/REPO/main/results.json
 const ONLINE_SCORE_SOURCE = {
-  name: 'OpenFootball World Cup JSON',
-  url: 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
+  name: 'نتایج گیت‌هاب (دستی)',
+  url: 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/results.json'
 };
+// ⬆️⬆️⬆️ این آدرس را به مخزن گیت‌هاب خودتان تغییر دهید ⬆️⬆️⬆️
 
 function normalizeTeamKey(name) {
   return String(name || '')
@@ -7340,33 +7343,64 @@ async function updateRealScoresOnline(btn) {
     const res = await fetch(`${ONLINE_SCORE_SOURCE.url}?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const sourceMatches = Array.isArray(data.matches) ? data.matches : [];
-    const lookup = localMatchLookup();
+
+    // مجموعه‌ی همه‌ی شناسه‌های مرحله گروهی و حذفی برای تشخیص اینکه هر نتیجه کجا برود
+    const koIds = new Set(KO.map(m => m.id));
+    const groupIds = new Set(MATCHES.map(m => m.id));
+
+    // قالب اصلی: { "scores": { "0":[2,1], "73":[1,0], ... } }
+    // (شناسه‌ها همان id بازی‌ها در برنامه هستند؛ هیچ تطبیق نامی لازم نیست)
+    const scores = (data && typeof data.scores === 'object' && data.scores) ? data.scores : null;
 
     let foundScores = 0;
     let changed = 0;
-    let matchedButNoScore = 0;
+    let unknownIds = 0;
 
-    sourceMatches.forEach(sm => {
-      const t1 = sm.team1 || sm.homeTeam || sm.home || sm.team_1;
-      const t2 = sm.team2 || sm.awayTeam || sm.away || sm.team_2;
-      if (!t1 || !t2) return;
+    if (scores) {
+      Object.entries(scores).forEach(([idStr, val]) => {
+        if (val === null || val === undefined) return;            // نتیجه هنوز ثبت نشده
+        if (!Array.isArray(val) || val.length < 2) return;
+        const s1 = Number(val[0]), s2 = Number(val[1]);
+        if (!Number.isFinite(s1) || !Number.isFinite(s2)) return;
+        const id = Number(idStr);
 
-      const key = `${canonicalTeamKey(t1)}|${canonicalTeamKey(t2)}`;
-      const hit = lookup[key];
-      if (!hit) return;
-
-      const sc = extractOnlineFinalScore(sm);
-      if (!sc) { matchedButNoScore++; return; }
-
-      foundScores++;
-      const finalScore = hit.reversed ? [sc[1], sc[0]] : sc;
-      const old = realScores[hit.id];
-      if (!old || old[0] !== finalScore[0] || old[1] !== finalScore[1]) changed++;
-      realScores[hit.id] = finalScore;
-    });
+        if (groupIds.has(id)) {
+          const old = realScores[id];
+          if (!old || old[0] !== s1 || old[1] !== s2) changed++;
+          realScores[id] = [s1, s2];
+          foundScores++;
+        } else if (koIds.has(id)) {
+          const old = koReal[id];
+          if (!old || old[0] !== s1 || old[1] !== s2) changed++;
+          koReal[id] = [s1, s2];
+          foundScores++;
+        } else {
+          unknownIds++;
+        }
+      });
+    } else {
+      // سازگاری با قالب قدیمی مبتنی بر نام تیم (OpenFootball)
+      const sourceMatches = Array.isArray(data.matches) ? data.matches : [];
+      const lookup = localMatchLookup();
+      sourceMatches.forEach(sm => {
+        const t1 = sm.team1 || sm.homeTeam || sm.home || sm.team_1;
+        const t2 = sm.team2 || sm.awayTeam || sm.away || sm.team_2;
+        if (!t1 || !t2) return;
+        const key = `${canonicalTeamKey(t1)}|${canonicalTeamKey(t2)}`;
+        const hit = lookup[key];
+        if (!hit) return;
+        const sc = extractOnlineFinalScore(sm);
+        if (!sc) return;
+        const finalScore = hit.reversed ? [sc[1], sc[0]] : sc;
+        const old = realScores[hit.id];
+        if (!old || old[0] !== finalScore[0] || old[1] !== finalScore[1]) changed++;
+        realScores[hit.id] = finalScore;
+        foundScores++;
+      });
+    }
 
     saveRealScores();
+    saveKoReal();
 
     const stamp = new Date().toLocaleString('fa-IR');
     localStorage.setItem('wc2026_real_last_online_update', stamp);
@@ -7377,16 +7411,16 @@ async function updateRealScoresOnline(btn) {
     else if (currentFilter === 'all' || currentFilter === 'done' || currentFilter === 'todo') buildMatchList();
 
     if (foundScores > 0) {
-      showToast(`${foundScores} نتیجه آنلاین ثبت/به‌روزرسانی شد`);
-      setOnlineStatus(`✅ ${foundScores} نتیجه پیدا شد؛ ${changed} مورد جدید/تغییریافته بود.`, 'ok');
+      showToast(`${foundScores} نتیجه از گیت‌هاب ثبت/به‌روزرسانی شد`);
+      setOnlineStatus(`✅ ${foundScores} نتیجه دریافت شد؛ ${changed} مورد جدید/تغییریافته بود.`, 'ok');
     } else {
-      showToast('فعلاً نتیجه نهایی آنلاین پیدا نشد');
-      setOnlineStatus(`فعلاً نتیجه نهایی در منبع آنلاین نبود. ${matchedButNoScore} بازی با برنامه تطبیق داده شد ولی هنوز score نداشت.`, '');
+      showToast('نتیجه‌ی جدیدی در منبع نبود');
+      setOnlineStatus('هنوز نتیجه‌ای در فایل results.json ثبت نشده است.', '');
     }
   } catch (err) {
     console.error(err);
     showToast('خطا در دریافت آنلاین نتایج');
-    setOnlineStatus('❌ دریافت آنلاین ناموفق بود. اتصال اینترنت، محدودیت GitHub یا ساختار منبع را بررسی کنید.', 'err');
+    setOnlineStatus('❌ دریافت ناموفق بود. آدرس مخزن گیت‌هاب، اتصال اینترنت یا ساختار results.json را بررسی کنید.', 'err');
   } finally {
     if (btn) {
       btn.disabled = false;

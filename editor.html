@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ویرایشگر نتایج جام جهانی ۲۰۲۶</title>
+<style>
+  :root{--bg:#0c1018;--card:#141b27;--card2:#1a2433;--gold:#e8b923;--green:#1f9d55;--text:#e8edf4;--dim:#7d8aa0;--border:#26314a;--red:#c0392b}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,system-ui,sans-serif;padding-bottom:7rem}
+  header{position:sticky;top:0;background:#0c1018ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:.8rem 1rem;z-index:10}
+  h1{font-size:1.05rem;margin:0 0 .3rem}
+  .hint{font-size:.72rem;color:var(--dim);line-height:1.6}
+  .content{padding:.5rem .8rem}
+  .sec{font-size:.82rem;font-weight:800;color:var(--gold);padding:.9rem .2rem .4rem;border-bottom:1px solid var(--border);margin-bottom:.5rem;margin-top:.6rem}
+  .date-sep{font-size:.72rem;color:var(--dim);padding:.5rem .2rem .2rem}
+  .mcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.6rem .7rem;margin-bottom:.5rem}
+  .mcard.set{border-color:var(--green)}
+  .mtop{display:flex;justify-content:space-between;align-items:center;font-size:.68rem;color:var(--dim);margin-bottom:.4rem}
+  .mteams{display:flex;align-items:center;justify-content:center;gap:.4rem;margin-bottom:.5rem;font-size:.9rem;font-weight:700}
+  .srow{display:flex;align-items:center;justify-content:center;gap:.3rem}
+  .sbtn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:1.1rem;cursor:pointer;line-height:1}
+  .sval{min-width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--card2);border-radius:7px;font-weight:800;font-size:1.1rem}
+  .sval.q{color:var(--dim)}
+  .colon{color:var(--dim);margin:0 .15rem}
+  .clr{margin-right:.5rem;background:none;border:none;color:var(--red);font-size:.72rem;cursor:pointer}
+  .toggle{background:var(--gold);color:#1a1300;border:none;border-radius:7px;padding:.3rem .7rem;font-size:.72rem;font-weight:800;cursor:pointer}
+  .toggle.on{background:var(--green);color:#fff}
+  footer{position:fixed;bottom:0;left:0;right:0;background:#0c1018f5;border-top:1px solid var(--border);padding:.7rem .9rem;display:flex;gap:.5rem}
+  .fbtn{flex:1;border:none;border-radius:10px;padding:.8rem;font-size:.85rem;font-weight:800;cursor:pointer}
+  .fbtn.primary{background:var(--gold);color:#1a1300}
+  .fbtn.sec{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+  textarea{width:100%;height:120px;background:#06090f;color:#9fe0b0;border:1px solid var(--border);border-radius:10px;padding:.6rem;font-family:monospace;font-size:.75rem;margin-top:.6rem;display:none}
+  .toast{position:fixed;bottom:5.5rem;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:.6rem 1.2rem;border-radius:20px;font-size:.8rem;opacity:0;transition:.3s;pointer-events:none;z-index:20}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>📝 ویرایشگر نتایج</h1>
+  <div class="hint">برای هر بازی روی «ثبت» بزنید و نتیجه را وارد کنید. سپس دکمه‌ی «تولید JSON» را بزنید و محتوا را در فایل <b>results.json</b> مخزن گیت‌هاب خود قرار دهید (commit). فقط بازی‌هایی که ثبت کنید در خروجی می‌آیند.</div>
+</header>
+<div class="content" id="content"></div>
+<textarea id="out" readonly></textarea>
+<footer>
+  <button class="fbtn primary" onclick="genJSON()">🧩 تولید JSON</button>
+  <button class="fbtn sec" onclick="copyJSON()">📋 کپی</button>
+  <button class="fbtn sec" onclick="loadExisting()">📥 بارگذاری قبلی</button>
+</footer>
+<div class="toast" id="toast"></div>
+<script>
+const MATCHES = [
+  {id:0,  date:"Thu Jun 11", time:"20:00", t1:"Mexico",         t2:"South Africa",    grp:"A"},
+  {id:1,  date:"Fri Jun 12", time:"03:00", t1:"Rep. of Korea",  t2:"Czech Rep.",       grp:"A"},
+  {id:2,  date:"Fri Jun 12", time:"20:00", t1:"Canada",         t2:"Bosnia/Herzeg.",  grp:"B"},
+  {id:3,  date:"Sat Jun 13", time:"02:00", t1:"USA",            t2:"Paraguay",         grp:"D"},
+  {id:4,  date:"Sat Jun 13", time:"20:00", t1:"Qatar",          t2:"Switzerland",      grp:"B"},
+  {id:5,  date:"Sun Jun 14", time:"02:00", t1:"Haiti",          t2:"Scotland",         grp:"C"},
+  {id:6,  date:"Sun Jun 14", time:"05:00", t1:"Australia",      t2:"Turkey",           grp:"D"},
+  {id:7,  date:"Sun Jun 14", time:"18:00", t1:"Germany",        t2:"Curaçao",          grp:"E"},
+  {id:8,  date:"Sun Jun 14", time:"21:00", t1:"Netherlands",    t2:"Japan",            grp:"F"},
+  {id:9,  date:"Sat Jun 13", time:"23:00", t1:"Brazil",         t2:"Morocco",          grp:"C"},
+  {id:10, date:"Mon Jun 15", time:"00:00", t1:"Ivory Coast",    t2:"Ecuador",          grp:"E"},
+  {id:11, date:"Mon Jun 15", time:"03:00", t1:"Sweden",         t2:"Tunisia",          grp:"F"},
+  {id:12, date:"Mon Jun 15", time:"17:00", t1:"Spain",          t2:"Cape Verde",       grp:"H"},
+  {id:13, date:"Mon Jun 15", time:"20:00", t1:"Belgium",        t2:"Egypt",            grp:"G"},
+  {id:14, date:"Tue Jun 16", time:"02:00", t1:"IR Iran",        t2:"New Zealand",      grp:"G"},
+  {id:15, date:"Tue Jun 16", time:"20:00", t1:"France",         t2:"Senegal",          grp:"I"},
+  {id:16, date:"Mon Jun 15", time:"23:00", t1:"Saudi Arabia",   t2:"Uruguay",          grp:"H"},
+  {id:17, date:"Wed Jun 17", time:"02:00", t1:"Argentina",      t2:"Algeria",          grp:"J"},
+  {id:18, date:"Wed Jun 17", time:"05:00", t1:"Austria",        t2:"Jordan",           grp:"J"},
+  {id:19, date:"Wed Jun 17", time:"18:00", t1:"Portugal",       t2:"DR Congo",         grp:"K"},
+  {id:20, date:"Wed Jun 17", time:"21:00", t1:"England",        t2:"Croatia",          grp:"L"},
+  {id:21, date:"Tue Jun 16", time:"23:00", t1:"Iraq",           t2:"Norway",           grp:"I"},
+  {id:22, date:"Thu Jun 18", time:"00:00", t1:"Ghana",          t2:"Panama",           grp:"L"},
+  {id:23, date:"Thu Jun 18", time:"03:00", t1:"Uzbekistan",     t2:"Colombia",         grp:"K"},
+  {id:24, date:"Thu Jun 18", time:"17:00", t1:"Czech Rep.",     t2:"South Africa",     grp:"A"},
+  {id:25, date:"Thu Jun 18", time:"20:00", t1:"Switzerland",    t2:"Bosnia/Herzeg.",  grp:"B"},
+  {id:26, date:"Fri Jun 19", time:"02:00", t1:"Mexico",         t2:"Rep. of Korea",    grp:"A"},
+  {id:27, date:"Fri Jun 19", time:"20:00", t1:"USA",            t2:"Australia",        grp:"D"},
+  {id:28, date:"Thu Jun 18", time:"23:00", t1:"Canada",         t2:"Qatar",            grp:"B"},
+  {id:29, date:"Sat Jun 20", time:"01:30", t1:"Brazil",         t2:"Haiti",            grp:"C"},
+  {id:30, date:"Sat Jun 20", time:"04:00", t1:"Turkey",         t2:"Paraguay",         grp:"D"},
+  {id:31, date:"Sat Jun 20", time:"18:00", t1:"Netherlands",    t2:"Sweden",           grp:"F"},
+  {id:32, date:"Sat Jun 20", time:"21:00", t1:"Germany",        t2:"Ivory Coast",      grp:"E"},
+  {id:33, date:"Fri Jun 19", time:"23:00", t1:"Scotland",       t2:"Morocco",          grp:"C"},
+  {id:34, date:"Sun Jun 21", time:"01:00", t1:"Ecuador",        t2:"Curaçao",          grp:"E"},
+  {id:35, date:"Sun Jun 21", time:"05:00", t1:"Tunisia",        t2:"Japan",            grp:"F"},
+  {id:36, date:"Sun Jun 21", time:"17:00", t1:"Spain",          t2:"Saudi Arabia",     grp:"H"},
+  {id:37, date:"Sun Jun 21", time:"20:00", t1:"Belgium",        t2:"IR Iran",          grp:"G"},
+  {id:38, date:"Mon Jun 22", time:"02:00", t1:"New Zealand",    t2:"Egypt",            grp:"G"},
+  {id:39, date:"Mon Jun 22", time:"18:00", t1:"Argentina",      t2:"Austria",          grp:"J"},
+  {id:40, date:"Mon Jun 22", time:"22:00", t1:"France",         t2:"Iraq",             grp:"I"},
+  {id:41, date:"Sun Jun 21", time:"23:00", t1:"Uruguay",        t2:"Cape Verde",       grp:"H"},
+  {id:42, date:"Tue Jun 23", time:"01:00", t1:"Norway",         t2:"Senegal",          grp:"I"},
+  {id:43, date:"Tue Jun 23", time:"04:00", t1:"Jordan",         t2:"Algeria",          grp:"J"},
+  {id:44, date:"Tue Jun 23", time:"18:00", t1:"Portugal",       t2:"Uzbekistan",       grp:"K"},
+  {id:45, date:"Tue Jun 23", time:"21:00", t1:"England",        t2:"Ghana",            grp:"L"},
+  {id:46, date:"Wed Jun 24", time:"00:00", t1:"Panama",         t2:"Croatia",          grp:"L"},
+  {id:47, date:"Wed Jun 24", time:"03:00", t1:"Colombia",       t2:"DR Congo",         grp:"K"},
+  {id:48, date:"Wed Jun 24", time:"20:00", t1:"Switzerland",    t2:"Canada",           grp:"B"},
+  {id:49, date:"Wed Jun 24", time:"20:00", t1:"Bosnia/Herzeg.", t2:"Qatar",            grp:"B"},
+  {id:50, date:"Thu Jun 25", time:"02:00", t1:"Czech Rep.",     t2:"Mexico",           grp:"A"},
+  {id:51, date:"Thu Jun 25", time:"02:00", t1:"South Africa",   t2:"Rep. of Korea",    grp:"A"},
+  {id:52, date:"Thu Jun 25", time:"21:00", t1:"Curaçao",        t2:"Ivory Coast",      grp:"E"},
+  {id:53, date:"Thu Jun 25", time:"21:00", t1:"Ecuador",        t2:"Germany",          grp:"E"},
+  {id:54, date:"Wed Jun 24", time:"23:00", t1:"Scotland",       t2:"Brazil",           grp:"C"},
+  {id:55, date:"Wed Jun 24", time:"23:00", t1:"Morocco",        t2:"Haiti",            grp:"C"},
+  {id:56, date:"Fri Jun 26", time:"00:00", t1:"Japan",          t2:"Sweden",           grp:"F"},
+  {id:57, date:"Fri Jun 26", time:"00:00", t1:"Tunisia",        t2:"Netherlands",      grp:"F"},
+  {id:58, date:"Fri Jun 26", time:"03:00", t1:"Turkey",         t2:"USA",              grp:"D"},
+  {id:59, date:"Fri Jun 26", time:"03:00", t1:"Paraguay",       t2:"Australia",        grp:"D"},
+  {id:60, date:"Fri Jun 26", time:"20:00", t1:"Norway",         t2:"France",           grp:"I"},
+  {id:61, date:"Fri Jun 26", time:"20:00", t1:"Senegal",        t2:"Iraq",             grp:"I"},
+  {id:62, date:"Sat Jun 27", time:"01:00", t1:"Cape Verde",     t2:"Saudi Arabia",     grp:"H"},
+  {id:63, date:"Sat Jun 27", time:"01:00", t1:"Uruguay",        t2:"Spain",            grp:"H"},
+  {id:64, date:"Sat Jun 27", time:"04:00", t1:"Egypt",          t2:"IR Iran",          grp:"G"},
+  {id:65, date:"Sat Jun 27", time:"04:00", t1:"New Zealand",    t2:"Belgium",          grp:"G"},
+  {id:66, date:"Sat Jun 27", time:"22:00", t1:"Panama",         t2:"England",          grp:"L"},
+  {id:67, date:"Sat Jun 27", time:"22:00", t1:"Croatia",        t2:"Ghana",            grp:"L"},
+  {id:68, date:"Sun Jun 28", time:"00:30", t1:"Colombia",       t2:"Portugal",         grp:"K"},
+  {id:69, date:"Sun Jun 28", time:"00:30", t1:"DR Congo",       t2:"Uzbekistan",       grp:"K"},
+  {id:70, date:"Sun Jun 28", time:"03:00", t1:"Algeria",        t2:"Austria",          grp:"J"},
+  {id:71, date:"Sun Jun 28", time:"03:00", t1:"Jordan",         t2:"Argentina",        grp:"J"},
+];
+const KO = [
+  // Round of 32
+  {id:73,  date:"Sun Jun 28",time:"20:00",s1:"2A",    s2:"2B",       city:"لوس‌آنجلس",       round:"R32"},
+  {id:76,  date:"Mon Jun 29",time:"18:00",s1:"1C",    s2:"2F",       city:"هوستون",          round:"R32"},
+  {id:74,  date:"Mon Jun 29",time:"21:30",s1:"1E",    s2:"3-ABCDF",  city:"بوستون",          round:"R32"},
+  {id:75,  date:"Tue Jun 30",time:"02:00",s1:"1F",    s2:"2C",       city:"مونتری",          round:"R32"},
+  {id:78,  date:"Tue Jun 30",time:"18:00",s1:"2E",    s2:"2I",       city:"دالاس",           round:"R32"},
+  {id:77,  date:"Tue Jun 30",time:"22:00",s1:"1I",    s2:"3-CDFGH",  city:"نیویورک/نیوجرسی",round:"R32"},
+  {id:79,  date:"Wed Jul 1", time:"02:00",s1:"1A",    s2:"3-CEFHI",  city:"مکزیکوسیتی",     round:"R32"},
+  {id:80,  date:"Wed Jul 1", time:"17:00",s1:"1L",    s2:"3-EHIJK",  city:"آتلانتا",         round:"R32"},
+  {id:82,  date:"Wed Jul 1", time:"21:00",s1:"1G",    s2:"3-AEHIJ",  city:"سیاتل",           round:"R32"},
+  {id:81,  date:"Thu Jul 2", time:"01:00",s1:"1D",    s2:"3-BEFIJ",  city:"سانفرانسیسکو",   round:"R32"},
+  {id:84,  date:"Thu Jul 2", time:"20:00",s1:"1H",    s2:"2J",       city:"لوس‌آنجلس",       round:"R32"},
+  {id:83,  date:"Fri Jul 3", time:"00:00",s1:"2K",    s2:"2L",       city:"تورنتو",          round:"R32"},
+  {id:85,  date:"Fri Jul 3", time:"04:00",s1:"1B",    s2:"3-EFGIJ",  city:"ونکوور",          round:"R32"},
+  {id:88,  date:"Fri Jul 3", time:"19:00",s1:"2D",    s2:"2G",       city:"دالاس",           round:"R32"},
+  {id:86,  date:"Fri Jul 3", time:"23:00",s1:"1J",    s2:"2H",       city:"میامی",           round:"R32"},
+  {id:87,  date:"Sat Jul 4", time:"02:30",s1:"1K",    s2:"3-DEIJL",  city:"کانزاس سیتی",    round:"R32"},
+  // Round of 16
+  {id:90,  date:"Sat Jul 4", time:"18:00",s1:"W73",   s2:"W75",      city:"هوستون",          round:"R16"},
+  {id:89,  date:"Sat Jul 4", time:"22:00",s1:"W74",   s2:"W77",      city:"فیلادلفیا",       round:"R16"},
+  {id:91,  date:"Sun Jul 5", time:"21:00",s1:"W76",   s2:"W78",      city:"نیویورک/نیوجرسی",round:"R16"},
+  {id:92,  date:"Mon Jul 6", time:"01:00",s1:"W79",   s2:"W80",      city:"مکزیکوسیتی",     round:"R16"},
+  {id:93,  date:"Mon Jul 6", time:"20:00",s1:"W83",   s2:"W84",      city:"دالاس",           round:"R16"},
+  {id:94,  date:"Tue Jul 7", time:"01:00",s1:"W81",   s2:"W82",      city:"سیاتل",           round:"R16"},
+  {id:95,  date:"Tue Jul 7", time:"17:00",s1:"W86",   s2:"W88",      city:"آتلانتا",         round:"R16"},
+  {id:96,  date:"Tue Jul 7", time:"21:00",s1:"W85",   s2:"W87",      city:"ونکوور",          round:"R16"},
+  // Quarter Finals
+  {id:97,  date:"Thu Jul 9", time:"21:00",s1:"W89",   s2:"W90",      city:"بوستون",          round:"QF"},
+  {id:98,  date:"Fri Jul 10",time:"20:00",s1:"W93",   s2:"W94",      city:"لوس‌آنجلس",       round:"QF"},
+  {id:99,  date:"Sat Jul 11",time:"22:00",s1:"W91",   s2:"W92",      city:"میامی",           round:"QF"},
+  {id:100, date:"Sun Jul 12",time:"02:00",s1:"W95",   s2:"W96",      city:"کانزاس سیتی",    round:"QF"},
+  // Semi Finals
+  {id:101, date:"Tue Jul 14",time:"20:00",s1:"W97",   s2:"W98",      city:"دالاس",           round:"SF"},
+  {id:102, date:"Wed Jul 15",time:"20:00",s1:"W99",   s2:"W100",     city:"آتلانتا",         round:"SF"},
+  // Third place
+  {id:103, date:"Sat Jul 18",time:"22:00",s1:"RU101", s2:"RU102",    city:"میامی",           round:"3rd"},
+  // Final
+  {id:104, date:"Sun Jul 19",time:"20:00",s1:"W101",  s2:"W102",     city:"نیویورک/نیوجرسی",round:"Final"},
+];
+const FA_TEAMS = {
+  "Mexico":"مکزیک","South Africa":"آفریقای جنوبی","Rep. of Korea":"کره جنوبی",
+  "Czech Rep.":"جمهوری چک","Canada":"کانادا","Bosnia/Herzeg.":"بوسنی و هرزگوین",
+  "USA":"آمریکا","Paraguay":"پاراگوئه","Qatar":"قطر","Switzerland":"سوئیس",
+  "Brazil":"برزیل","Morocco":"مراکش","Haiti":"هائیتی","Scotland":"اسکاتلند",
+  "Australia":"استرالیا","Turkey":"ترکیه","Germany":"آلمان","Curaçao":"کوراسائو",
+  "Netherlands":"هلند","Japan":"ژاپن","Ivory Coast":"ساحل عاج","Ecuador":"اکوادور",
+  "Sweden":"سوئد","Tunisia":"تونس","Spain":"اسپانیا","Cape Verde":"کیپ‌ورد",
+  "Belgium":"بلژیک","Egypt":"مصر","Saudi Arabia":"عربستان سعودی","Uruguay":"اروگوئه",
+  "IR Iran":"ایران","New Zealand":"نیوزیلند","France":"فرانسه","Senegal":"سنگال",
+  "Iraq":"عراق","Norway":"نروژ","Argentina":"آرژانتین","Algeria":"الجزایر",
+  "Austria":"اتریش","Jordan":"اردن","Portugal":"پرتغال","DR Congo":"کنگو دموکراتیک",
+  "England":"انگلستان","Croatia":"کرواسی","Ghana":"غنا","Panama":"پاناما",
+  "Uzbekistan":"ازبکستان","Colombia":"کلمبیا",
+};
+const FLAGS = {
+  "Mexico":"🇲🇽","South Africa":"🇿🇦","Rep. of Korea":"🇰🇷","Czech Rep.":"🇨🇿",
+  "Canada":"🇨🇦","Bosnia/Herzeg.":"🇧🇦","USA":"🇺🇸","Paraguay":"🇵🇾",
+  "Qatar":"🇶🇦","Switzerland":"🇨🇭","Brazil":"🇧🇷","Morocco":"🇲🇦",
+  "Haiti":"🇭🇹","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","Australia":"🇦🇺","Turkey":"🇹🇷",
+  "Germany":"🇩🇪","Curaçao":"🇨🇼","Netherlands":"🇳🇱","Japan":"🇯🇵",
+  "Ivory Coast":"🇨🇮","Ecuador":"🇪🇨","Sweden":"🇸🇪","Tunisia":"🇹🇳",
+  "Spain":"🇪🇸","Cape Verde":"🇨🇻","Belgium":"🇧🇪","Egypt":"🇪🇬",
+  "Saudi Arabia":"🇸🇦","Uruguay":"🇺🇾","IR Iran":"🇮🇷","New Zealand":"🇳🇿",
+  "France":"🇫🇷","Senegal":"🇸🇳","Iraq":"🇮🇶","Norway":"🇳🇴",
+  "Argentina":"🇦🇷","Algeria":"🇩🇿","Austria":"🇦🇹","Jordan":"🇯🇴",
+  "Portugal":"🇵🇹","DR Congo":"🇨🇩","England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croatia":"🇭🇷",
+  "Ghana":"🇬🇭","Panama":"🇵🇦","Uzbekistan":"🇺🇿","Colombia":"🇨🇴",
+};
+const FA_DAYS = {
+  "Mon":"دوشنبه","Tue":"سه‌شنبه","Wed":"چهارشنبه",
+  "Thu":"پنج‌شنبه","Fri":"جمعه","Sat":"شنبه","Sun":"یکشنبه"
+};
+const FA_MONTHS = {"Jun":"ژوئن","Jul":"ژوئیه"};
+const FA_ROUNDS = {R32:'یک‌سی‌ودوم',R16:'یک‌شانزدهم',QF:'ربع‌نهایی',SF:'نیمه‌نهایی','3rd':'مقام سوم',Final:'فینال'};
+
+// ⬇️ برای دکمه‌ی «بارگذاری قبلی»: آدرس results.json فعلی شما (اختیاری)
+const EXISTING_URL = 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/results.json';
+
+function faDate(d){const p=d.split(' ');return (FA_DAYS[p[0]]||p[0])+' '+p[2]+' '+(FA_MONTHS[p[1]]||p[1]);}
+function teamLabel(code){ // for KO slots like "1A","W73"
+  return code;
+}
+
+let scores = {}; // { id: [s1,s2] }
+const koIds = new Set(KO.map(m=>m.id));
+
+function render(){
+  const c=document.getElementById('content'); c.innerHTML='';
+  // group stage
+  addSec(c,'⚽ مرحله گروهی');
+  const byDate={};
+  MATCHES.forEach(m=>{(byDate[m.date]=byDate[m.date]||[]).push(m);});
+  Object.entries(byDate).forEach(([d,ms])=>{
+    addDate(c,faDate(d));
+    ms.forEach(m=>c.appendChild(card(m,FA_TEAMS[m.t1]||m.t1,FA_TEAMS[m.t2]||m.t2,FLAGS[m.t1]||'🏳',FLAGS[m.t2]||'🏳','گروه '+m.grp)));
+  });
+  // knockout
+  const rounds=[...new Set(KO.map(m=>m.round))];
+  rounds.forEach(r=>{
+    addSec(c,'🏆 '+(FA_ROUNDS[r]||r));
+    KO.filter(m=>m.round===r).forEach(m=>{
+      c.appendChild(card(m,m.s1,m.s2,'🏁','🏁',FA_ROUNDS[m.round]||m.round));
+    });
+  });
+}
+function addSec(c,t){const e=document.createElement('div');e.className='sec';e.textContent=t;c.appendChild(e);}
+function addDate(c,t){const e=document.createElement('div');e.className='date-sep';e.textContent='📅 '+t;c.appendChild(e);}
+
+function card(m,n1,n2,f1,f2,tag){
+  const set = scores[m.id]!==undefined;
+  const s1 = set?scores[m.id][0]:null, s2=set?scores[m.id][1]:null;
+  const d=document.createElement('div'); d.className='mcard'+(set?' set':''); d.id='c-'+m.id;
+  d.innerHTML =
+    '<div class="mtop"><span>'+m.time+' · '+tag+' · #'+m.id+'</span>'+
+    '<span>'+(set?'<button class="clr" onclick="clr('+m.id+')">پاک کردن</button>':'')+
+    '<button class="toggle'+(set?' on':'')+'" onclick="tog('+m.id+')">'+(set?'✓ ثبت شد':'＋ ثبت')+'</button></span></div>'+
+    '<div class="mteams"><span>'+f1+' '+n1+'</span><span style="color:var(--dim)">در برابر</span><span>'+n2+' '+f2+'</span></div>'+
+    (set?(
+    '<div class="srow">'+
+      '<button class="sbtn" onclick="adj('+m.id+',1,-1)">−</button>'+
+      '<div class="sval" id="v2-'+m.id+'">'+s2+'</div>'+
+      '<button class="sbtn" onclick="adj('+m.id+',1,1)">＋</button>'+
+      '<span class="colon">:</span>'+
+      '<button class="sbtn" onclick="adj('+m.id+',0,-1)">−</button>'+
+      '<div class="sval" id="v1-'+m.id+'">'+s1+'</div>'+
+      '<button class="sbtn" onclick="adj('+m.id+',0,1)">＋</button>'+
+    '</div>'):'');
+  return d;
+}
+function tog(id){ if(scores[id]!==undefined) delete scores[id]; else scores[id]=[0,0]; refresh(id); }
+function clr(id){ delete scores[id]; refresh(id); }
+function adj(id,idx,delta){ if(!scores[id])scores[id]=[0,0]; let v=scores[id][idx]+delta; if(v<0)v=0; if(v>20)v=20; scores[id][idx]=v; document.getElementById('v'+(idx+1)+'-'+id).textContent=v; }
+function refresh(id){
+  const all=[...MATCHES,...KO]; const m=all.find(x=>x.id===id);
+  let n1,n2,f1,f2,tag;
+  if(koIds.has(id)){ n1=m.s1;n2=m.s2;f1='🏁';f2='🏁';tag=FA_ROUNDS[m.round]||m.round; }
+  else { n1=FA_TEAMS[m.t1]||m.t1;n2=FA_TEAMS[m.t2]||m.t2;f1=FLAGS[m.t1]||'🏳';f2=FLAGS[m.t2]||'🏳';tag='گروه '+m.grp; }
+  document.getElementById('c-'+id).replaceWith(card(m,n1,n2,f1,f2,tag));
+}
+function genJSON(){
+  const ordered={};
+  [...MATCHES,...KO].forEach(m=>{ if(scores[m.id]!==undefined) ordered[m.id]=scores[m.id]; });
+  const json=JSON.stringify({updated:new Date().toISOString(),scores:ordered},null,2);
+  const ta=document.getElementById('out'); ta.style.display='block'; ta.value=json;
+  ta.scrollIntoView({behavior:'smooth',block:'center'});
+  toast(Object.keys(ordered).length+' نتیجه در JSON قرار گرفت');
+}
+function copyJSON(){
+  const ta=document.getElementById('out');
+  if(!ta.value){ genJSON(); }
+  ta.style.display='block';
+  navigator.clipboard?.writeText(ta.value).then(()=>toast('کپی شد!'),()=>{ta.select();document.execCommand('copy');toast('کپی شد!');});
+}
+async function loadExisting(){
+  try{
+    const r=await fetch(EXISTING_URL+'?t='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw 0;
+    const d=await r.json();
+    if(d&&d.scores){ Object.entries(d.scores).forEach(([k,v])=>{ if(Array.isArray(v)&&v.length>=2) scores[+k]=[+v[0],+v[1]]; }); render(); toast('نتایج قبلی بارگذاری شد'); }
+    else toast('فایل خالی بود');
+  }catch(e){ toast('بارگذاری ناموفق (آدرس را بررسی کنید)'); }
+}
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2200);}
+render();
+</script>
+</body></html>
