@@ -6816,6 +6816,7 @@ document.getElementById('main').style.display = 'none';
 document.getElementById('results').style.display = 'none';
 
 buildWelcome();
+maybeAutoUpdateRealScoresOnline();
 
 function buildWelcome() {
   // Show previously entered names
@@ -7298,7 +7299,7 @@ function addOnlineScorePanel(container) {
   panel.innerHTML = `
     <div class="online-score-title">🌐 به‌روزرسانی خودکار نتایج</div>
     <div class="online-score-text">
-      با این دکمه، برنامه نتایج موجود در اینترنت را بررسی می‌کند و هر بازی‌ای که نتیجه نهایی‌اش پیدا شود را به‌طور خودکار در «نتایج واقعی» ثبت می‌کند.
+      برنامه هنگام باز شدن سایت و همچنین هنگام ورود به تب‌های «نتایج واقعی» و «جدول پیش‌بینی‌گران» هر ۱۵ دقیقه یک‌بار نتایج اینترنتی را بررسی می‌کند. این دکمه هم بررسی دستی را انجام می‌دهد.
       <br>آخرین بررسی: <strong>${last}</strong>
     </div>
     <div class="online-score-actions">
@@ -7315,6 +7316,17 @@ function setOnlineStatus(msg, kind) {
   if (!el) return;
   el.textContent = msg;
   el.className = `online-score-status ${kind || ''}`;
+}
+
+const AUTO_SCORE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+
+function maybeAutoUpdateRealScoresOnline(force = false) {
+  const lastMs = Number(localStorage.getItem('wc2026_real_last_online_update_ms') || 0);
+  const due = force || !lastMs || (Date.now() - lastMs > AUTO_SCORE_CHECK_INTERVAL_MS);
+  if (!due) return;
+
+  // Fire-and-forget: this updates realScores, saves to localStorage, and rebuilds the current tab if needed.
+  updateRealScoresOnline();
 }
 
 async function updateRealScoresOnline(btn) {
@@ -7358,6 +7370,7 @@ async function updateRealScoresOnline(btn) {
 
     const stamp = new Date().toLocaleString('fa-IR');
     localStorage.setItem('wc2026_real_last_online_update', stamp);
+    localStorage.setItem('wc2026_real_last_online_update_ms', String(Date.now()));
 
     if (currentFilter === 'real') buildRealView();
     else if (currentFilter === 'rank') buildRankView();
@@ -7399,6 +7412,7 @@ function showRealTab() {
   hideAllViews();
   document.getElementById('real-view').style.display = 'block';
   buildRealView();
+  maybeAutoUpdateRealScoresOnline();
 }
 
 function showRankTab() {
@@ -7408,6 +7422,7 @@ function showRankTab() {
   hideAllViews();
   document.getElementById('rank-view').style.display = 'block';
   buildRankView();
+  maybeAutoUpdateRealScoresOnline();
 }
 
 // ── نتایج واقعی ──
