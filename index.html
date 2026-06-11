@@ -7407,6 +7407,8 @@ function clearRealScores() {
 
 function showRealTab() {
   currentFilter = 'real';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-real').classList.add('active');
   hideAllViews();
@@ -7417,6 +7419,8 @@ function showRealTab() {
 
 function showRankTab() {
   currentFilter = 'rank';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-rank').classList.add('active');
   hideAllViews();
