@@ -4630,7 +4630,7 @@ button{cursor:pointer;font-family:inherit}
   <div class="results-hdr">
     <h2>📊 همه پیش‌بینی‌ها</h2>
     <div style="display:flex;gap:.5rem">
-      <button class="back-btn" onclick="fetchPredictionsOnline(false)" title="دریافت آخرین پیش‌بینی‌ها از گیت‌هاب">⟳ sync</button>
+      <button class="back-btn" onclick="fetchPredictionsOnline(false, this)" title="دریافت آخرین پیش‌بینی‌ها از گیت‌هاب">⟳ sync</button>
       <button class="back-btn" onclick="showMain()">بازگشت ←</button>
     </div>
   </div>
@@ -7369,13 +7369,14 @@ function maybeAutoUpdateRealScoresOnline(force = false) {
   updateRealScoresOnline();
 }
 
-async function fetchPredictionsOnline(silent = true) {
+async function fetchPredictionsOnline(silent = true, btn = null) {
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const res = await fetch(`${ONLINE_PREDICTIONS_SOURCE.url}?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const onlinePreds = (data && typeof data.predictions === 'object') ? data.predictions : null;
-    const onlineKo = (data && typeof data.koPredictions === 'object') ? data.koPredictions : {};
+    const onlinePreds = (data && data.predictions && typeof data.predictions === 'object' && !Array.isArray(data.predictions)) ? data.predictions : null;
+    const onlineKo = (data && data.koPredictions && typeof data.koPredictions === 'object') ? data.koPredictions : {};
     if (!onlinePreds) throw new Error('فرمت نادرست');
 
     let changed = false;
@@ -7406,9 +7407,12 @@ async function fetchPredictionsOnline(silent = true) {
       else if (currentFilter === 'groups') buildGroupsView(currentPlayer);
     }
     store.set('wc2026_preds_last_sync', String(Date.now()));
-    if (!silent) showToast('پیش‌بینی‌های آنلاین به‌روز شدند');
+    if (!silent) showToast(changed ? 'پیش‌بینی‌ها به‌روز شدند' : 'پیش‌بینی‌ها از قبل به‌روز بودند');
   } catch (e) {
-    if (!silent) showToast('خطا در دریافت پیش‌بینی‌ها از گیت‌هاب');
+    console.error('fetchPredictionsOnline:', e);
+    if (!silent) showToast(`خطا: ${e.message}`);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⟳ sync'; }
   }
 }
 
