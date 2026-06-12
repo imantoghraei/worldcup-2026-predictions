@@ -7488,6 +7488,7 @@ async function updateRealScoresOnline(btn) {
 
     if (currentFilter === 'real') buildRealView();
     else if (currentFilter === 'rank') buildRankView();
+    else if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); }
     else if (currentFilter === 'all' || currentFilter === 'done' || currentFilter === 'todo') buildMatchList();
 
     if (foundScores > 0) {
@@ -8238,6 +8239,7 @@ function showResults() {
   document.getElementById('results').style.display = 'block';
   buildPlayersBar();
   buildResultsList();
+  maybeAutoUpdateRealScoresOnline();
 }
 
 function showMain() {
