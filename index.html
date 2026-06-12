@@ -6381,23 +6381,23 @@ button{cursor:pointer;font-family:inherit}
 const PLAYERS = [];
 
 function getSavedNames() {
-  const s = localStorage.getItem('wc2026_fa_names');
+  const s = store.get('wc2026_fa_names');
   const stored = s ? JSON.parse(s) : [];
   const fromPreds = Object.keys(allPredictions || {});
   const fromBaked = BAKED_DATA ? Object.keys(BAKED_DATA.p || {}) : [];
-  const removed = new Set(JSON.parse(localStorage.getItem('wc2026_fa_removed') || '[]'));
+  const removed = new Set(JSON.parse(store.get('wc2026_fa_removed') || '[]'));
   return [...new Set([...stored, ...fromPreds, ...fromBaked])].filter(n => !removed.has(n));
 }
 
 function savePlayerName(name) {
   // اگر قبلاً حذف شده بود، از فهرست حذف‌شده‌ها بیرونش بیاور
-  const removed = JSON.parse(localStorage.getItem('wc2026_fa_removed') || '[]').filter(n => n !== name);
-  localStorage.setItem('wc2026_fa_removed', JSON.stringify(removed));
+  const removed = JSON.parse(store.get('wc2026_fa_removed') || '[]').filter(n => n !== name);
+  store.set('wc2026_fa_removed', JSON.stringify(removed));
   const names = getSavedNames();
   if (!names.includes(name)) {
     names.push(name);
   }
-  localStorage.setItem('wc2026_fa_names', JSON.stringify(names));
+  store.set('wc2026_fa_names', JSON.stringify(names));
 }
 
 const FLAGS = {
@@ -6571,16 +6571,39 @@ let koReal = {};          // { matchId: [s1,s2] }
 let currentFilter = 'all';
 let currentKoRound = 'R32';
 
+// ── ذخیره‌سازی امن ──
+// وقتی فایل با content:// یا file:// باز می‌شود، دسترسی به localStorage خطا می‌دهد.
+// این پوشش (wrapper) از کرش جلوگیری می‌کند و در صورت نبودِ localStorage از حافظه‌ی موقت استفاده می‌کند.
+const _memStore = {};
+let _lsWorks = true;
+try { window.localStorage.setItem('__t', '1'); window.localStorage.removeItem('__t'); }
+catch (e) { _lsWorks = false; }
+
+const store = {
+  get(k) {
+    if (_lsWorks) { try { return window.localStorage.getItem(k); } catch (e) { _lsWorks = false; } }
+    return (k in _memStore) ? _memStore[k] : null;
+  },
+  set(k, v) {
+    if (_lsWorks) { try { window.localStorage.setItem(k, v); return; } catch (e) { _lsWorks = false; } }
+    _memStore[k] = String(v);
+  },
+  remove(k) {
+    if (_lsWorks) { try { window.localStorage.removeItem(k); } catch (e) { _lsWorks = false; } }
+    delete _memStore[k];
+  }
+};
+
 function loadData() {
-  const p = localStorage.getItem('wc2026_fa_all');   if (p) allPredictions = JSON.parse(p);
-  const r = localStorage.getItem('wc2026_fa_real');  if (r) realScores     = JSON.parse(r);
-  const kp = localStorage.getItem('wc2026_fa_kp');   if (kp) koPredictions = JSON.parse(kp);
-  const kr = localStorage.getItem('wc2026_fa_kr');   if (kr) koReal        = JSON.parse(kr);
+  const p = store.get('wc2026_fa_all');   if (p) allPredictions = JSON.parse(p);
+  const r = store.get('wc2026_fa_real');  if (r) realScores     = JSON.parse(r);
+  const kp = store.get('wc2026_fa_kp');   if (kp) koPredictions = JSON.parse(kp);
+  const kr = store.get('wc2026_fa_kr');   if (kr) koReal        = JSON.parse(kr);
 
   // اگر فایل HTML داده‌ی baked دارد، آن را با داده‌ی مرورگر «ادغام» کن
   // (به‌جای نادیده‌گرفتن یکی) تا با تعویض بازیکن هیچ داده‌ای حذف نشود.
   if (BAKED_DATA) {
-    const removed = new Set(JSON.parse(localStorage.getItem('wc2026_fa_removed') || '[]'));
+    const removed = new Set(JSON.parse(store.get('wc2026_fa_removed') || '[]'));
     Object.entries(BAKED_DATA.p || {}).forEach(([name, preds]) => {
       if (removed.has(name)) return;
       if (!allPredictions[name] || Object.keys(allPredictions[name]).length === 0) {
@@ -6594,17 +6617,17 @@ function loadData() {
     if (Object.keys(realScores).length === 0 && BAKED_DATA.r) realScores = BAKED_DATA.r;
     if (Object.keys(koReal).length === 0 && BAKED_DATA.kr) koReal = BAKED_DATA.kr;
 
-    const names = new Set(JSON.parse(localStorage.getItem('wc2026_fa_names') || '[]'));
+    const names = new Set(JSON.parse(store.get('wc2026_fa_names') || '[]'));
     Object.keys(allPredictions).forEach(n => names.add(n));
-    localStorage.setItem('wc2026_fa_names', JSON.stringify([...names]));
+    store.set('wc2026_fa_names', JSON.stringify([...names]));
 
     saveData(); saveRealScores(); saveKoPreds(); saveKoReal();
   }
 }
-function saveData()       { localStorage.setItem('wc2026_fa_all',  JSON.stringify(allPredictions)); }
-function saveRealScores() { localStorage.setItem('wc2026_fa_real', JSON.stringify(realScores)); }
-function saveKoPreds()    { localStorage.setItem('wc2026_fa_kp',   JSON.stringify(koPredictions)); }
-function saveKoReal()     { localStorage.setItem('wc2026_fa_kr',   JSON.stringify(koReal)); }
+function saveData()       { store.set('wc2026_fa_all',  JSON.stringify(allPredictions)); }
+function saveRealScores() { store.set('wc2026_fa_real', JSON.stringify(realScores)); }
+function saveKoPreds()    { store.set('wc2026_fa_kp',   JSON.stringify(koPredictions)); }
+function saveKoReal()     { store.set('wc2026_fa_kr',   JSON.stringify(koReal)); }
 
 // ── امتیاز محاسبه‌ای ──
 function calcScore(pred, real, isKo = false) {
@@ -6858,11 +6881,11 @@ function deletePlayer(name) {
   delete koPredictions[name];
   // از لیست نام‌ها هم حذف کن
   const names = getSavedNames().filter(n => n !== name);
-  localStorage.setItem('wc2026_fa_names', JSON.stringify(names));
+  store.set('wc2026_fa_names', JSON.stringify(names));
   // در فهرست حذف‌شده‌ها ثبت کن تا بازیکنِ baked دوباره برنگردد
-  const removed = new Set(JSON.parse(localStorage.getItem('wc2026_fa_removed') || '[]'));
+  const removed = new Set(JSON.parse(store.get('wc2026_fa_removed') || '[]'));
   removed.add(name);
-  localStorage.setItem('wc2026_fa_removed', JSON.stringify([...removed]));
+  store.set('wc2026_fa_removed', JSON.stringify([...removed]));
   saveData();
   saveKoPreds();
   buildWelcome();
@@ -7296,7 +7319,7 @@ function extractOnlineFinalScore(match) {
 }
 
 function addOnlineScorePanel(container) {
-  const last = localStorage.getItem('wc2026_real_last_online_update') || 'هنوز انجام نشده';
+  const last = store.get('wc2026_real_last_online_update') || 'هنوز انجام نشده';
   const panel = document.createElement('div');
   panel.className = 'online-score-panel';
   panel.innerHTML = `
@@ -7324,7 +7347,7 @@ function setOnlineStatus(msg, kind) {
 const AUTO_SCORE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 
 function maybeAutoUpdateRealScoresOnline(force = false) {
-  const lastMs = Number(localStorage.getItem('wc2026_real_last_online_update_ms') || 0);
+  const lastMs = Number(store.get('wc2026_real_last_online_update_ms') || 0);
   const due = force || !lastMs || (Date.now() - lastMs > AUTO_SCORE_CHECK_INTERVAL_MS);
   if (!due) return;
 
@@ -7403,8 +7426,8 @@ async function updateRealScoresOnline(btn) {
     saveKoReal();
 
     const stamp = new Date().toLocaleString('fa-IR');
-    localStorage.setItem('wc2026_real_last_online_update', stamp);
-    localStorage.setItem('wc2026_real_last_online_update_ms', String(Date.now()));
+    store.set('wc2026_real_last_online_update', stamp);
+    store.set('wc2026_real_last_online_update_ms', String(Date.now()));
 
     if (currentFilter === 'real') buildRealView();
     else if (currentFilter === 'rank') buildRankView();
@@ -7466,9 +7489,43 @@ function showRankTab() {
 // ── نتایج واقعی ──
 function buildRealView() {
   const container = document.getElementById('real-view');
-  container.innerHTML = '';
-  addOnlineScorePanel(container);
+  try {
+    container.innerHTML = '';
+    addOnlineScorePanel(container);
+    renderRealMatches(container);
+  } catch (err) {
+    console.error('buildRealView error:', err);
+    // اگر داده‌ی ذخیره‌شده خراب باشد، به‌جای صفحه‌ی خالی پیام بده و امکان پاکسازی بده
+    const box = document.createElement('div');
+    box.style.cssText = 'text-align:center;color:var(--dim);padding:1.5rem;font-size:.85rem;line-height:1.8';
+    box.innerHTML = '⚠️ هنگام نمایش نتایج خطایی رخ داد.<br>ممکن است داده‌ی ذخیره‌شده خراب باشد.<br><br>' +
+      '<button class="online-score-btn secondary" onclick="repairRealScores()">🧹 پاکسازی و تلاش دوباره</button>';
+    container.appendChild(box);
+  }
+}
 
+// نتایج خراب را اصلاح/پاک می‌کند سپس دوباره رندر می‌کند
+function repairRealScores() {
+  realScores = sanitizeScoreMap(realScores);
+  koReal = sanitizeScoreMap(koReal);
+  saveRealScores();
+  saveKoReal();
+  buildRealView();
+}
+
+// فقط مقادیر معتبر [عدد, عدد] را نگه می‌دارد
+function sanitizeScoreMap(map) {
+  const clean = {};
+  Object.entries(map || {}).forEach(([id, v]) => {
+    if (Array.isArray(v) && v.length >= 2) {
+      const a = Number(v[0]), b = Number(v[1]);
+      if (Number.isFinite(a) && Number.isFinite(b)) clean[id] = [a, b];
+    }
+  });
+  return clean;
+}
+
+function renderRealMatches(container) {
   // Section header helper
   function addSectionHeader(label) {
     const h = document.createElement('div');
@@ -7514,10 +7571,11 @@ function buildRealView() {
 }
 
 function buildRealCard(m) {
-  const real = realScores[m.id];
-  const recorded = real !== undefined;
-  const s1 = recorded ? real[0] : 0;
-  const s2 = recorded ? real[1] : 0;
+  const raw = realScores[m.id];
+  const valid = Array.isArray(raw) && raw.length >= 2 && Number.isFinite(Number(raw[0])) && Number.isFinite(Number(raw[1]));
+  const recorded = valid;
+  const s1 = valid ? Number(raw[0]) : 0;
+  const s2 = valid ? Number(raw[1]) : 0;
   const f1 = FLAGS[m.t1] || '🏳';
   const f2 = FLAGS[m.t2] || '🏳';
   const fa1 = FA_TEAMS[m.t1] || m.t1;
