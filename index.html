@@ -99,10 +99,17 @@ button{cursor:pointer;font-family:inherit}
 .ppick.highlight{background:var(--green-dark);border:1px solid var(--green)}
 
 /* ── نوار آمار مقایسه ── */
-.rcard-stat{margin-top:.5rem;direction:ltr}
-.rsb-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;gap:1px;background:var(--card2)}
-.rsb-bar div{min-width:0}
-.rsb-legend{display:flex;justify-content:space-between;font-size:.6rem;margin-top:.25rem;color:var(--dim)}
+.rcard-stat{margin-top:.6rem;direction:ltr}
+.rsb-bar{display:flex;height:22px;border-radius:8px;overflow:hidden;gap:2px;background:var(--card2)}
+.rsb-seg{display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:rgba(255,255,255,.92);overflow:hidden;white-space:nowrap;min-width:0;transition:width .3s}
+.rsb-legend{display:flex;justify-content:space-between;font-size:.65rem;font-weight:700;margin-top:.3rem}
+
+/* ── دکمه‌های انتخاب حالت (خوش‌آمد) ── */
+.wmode-wrap{display:flex;gap:.7rem;width:100%;max-width:300px;margin:1.5rem 0 .5rem}
+.wmode-btn{flex:1;padding:.9rem .5rem;border-radius:14px;border:2px solid var(--border);background:var(--card);color:var(--dim);font-size:.85rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;text-align:center;line-height:1.5}
+.wmode-btn.active{background:var(--green);border-color:var(--green-light);color:#fff}
+/* ── هدر حالت مشاهده ── */
+.view-hdr-title{font-size:1.05rem;font-weight:800;color:var(--text)}
 
 /* ── تست ── */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#27ae60;color:#fff;padding:.6rem 1.4rem;border-radius:24px;font-size:.85rem;font-weight:700;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
@@ -231,43 +238,61 @@ button{cursor:pointer;font-family:inherit}
   <div class="trophy">🏆</div>
   <div class="wc-title">جام جهانی ۲۰۲۶</div>
   <div class="wc-sub">پیش‌بینی مرحله گروهی</div>
-  <div class="custom-join" style="margin-top:1rem">
+
+  <div class="wmode-wrap">
+    <button class="wmode-btn active" id="wbtn-predict">✏️<br>ورود پیش‌بینی</button>
+    <button class="wmode-btn" id="wbtn-view" onclick="enterViewMode()">📊<br>مشاهده</button>
+  </div>
+
+  <div class="custom-join">
     <div class="custom-join-row">
       <input type="text" id="custom-name" placeholder="نام خود را وارد کنید..." maxlength="30" onkeydown="if(event.key==='Enter')joinCustom()">
       <button onclick="joinCustom()">ورود ←</button>
     </div>
   </div>
-  <div id="saved-players-section" style="margin-top:1.5rem;width:100%;max-width:300px"><div style="font-size: 0.8rem; color: var(--dim); margin-bottom: 0.7rem; text-align: center;">یا از لیست انتخاب کنید:</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%;"><div style="position: relative;"><button class="player-btn" style="width: 100%;"><span class="player-avatar">👤</span>ایمان<br><small style="font-size:.65rem;color:var(--gold);font-weight:600">72/72</small></button><button title="حذف بازیکن" style="position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; border-radius: 50%; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; background: rgb(192, 57, 43); color: rgb(255, 255, 255); font-size: 0.75rem; line-height: 1; cursor: pointer; padding: 0px; display: flex; align-items: center; justify-content: center; box-shadow: rgba(0, 0, 0, 0.4) 0px 1px 3px;">✕</button></div><div style="position: relative;"><button class="player-btn" style="width: 100%;"><span class="player-avatar">👤</span>آرش مازندرانی<br><small style="font-size:.65rem;color:var(--gold);font-weight:600">72/72</small></button><button title="حذف بازیکن" style="position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; border-radius: 50%; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; background: rgb(192, 57, 43); color: rgb(255, 255, 255); font-size: 0.75rem; line-height: 1; cursor: pointer; padding: 0px; display: flex; align-items: center; justify-content: center; box-shadow: rgba(0, 0, 0, 0.4) 0px 1px 3px;">✕</button></div><div style="position: relative;"><button class="player-btn" style="width: 100%;"><span class="player-avatar">👤</span>میلاد<br><small style="font-size:.65rem;color:var(--gold);font-weight:600">72/72</small></button><button title="حذف بازیکن" style="position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; border-radius: 50%; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; background: rgb(192, 57, 43); color: rgb(255, 255, 255); font-size: 0.75rem; line-height: 1; cursor: pointer; padding: 0px; display: flex; align-items: center; justify-content: center; box-shadow: rgba(0, 0, 0, 0.4) 0px 1px 3px;">✕</button></div><div style="position: relative;"><button class="player-btn" style="width: 100%;"><span class="player-avatar">👤</span>علیرضا<br><small style="font-size:.65rem;color:var(--gold);font-weight:600">72/72</small></button><button title="حذف بازیکن" style="position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; border-radius: 50%; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; background: rgb(192, 57, 43); color: rgb(255, 255, 255); font-size: 0.75rem; line-height: 1; cursor: pointer; padding: 0px; display: flex; align-items: center; justify-content: center; box-shadow: rgba(0, 0, 0, 0.4) 0px 1px 3px;">✕</button></div><div style="position: relative;"><button class="player-btn" style="width: 100%;"><span class="player-avatar">👤</span>Hamid<br><small style="font-size:.65rem;color:var(--gold);font-weight:600">72/72</small></button><button title="حذف بازیکن" style="position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; border-radius: 50%; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; background: rgb(192, 57, 43); color: rgb(255, 255, 255); font-size: 0.75rem; line-height: 1; cursor: pointer; padding: 0px; display: flex; align-items: center; justify-content: center; box-shadow: rgba(0, 0, 0, 0.4) 0px 1px 3px;">✕</button></div><div style="position: relative;"><button class="player-btn" style="width: 100%;"><span class="player-avatar">👤</span>مقداد<br><small style="font-size:.65rem;color:var(--gold);font-weight:600">72/72</small></button><button title="حذف بازیکن" style="position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; border-radius: 50%; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; background: rgb(192, 57, 43); color: rgb(255, 255, 255); font-size: 0.75rem; line-height: 1; cursor: pointer; padding: 0px; display: flex; align-items: center; justify-content: center; box-shadow: rgba(0, 0, 0, 0.4) 0px 1px 3px;">✕</button></div><div style="position: relative;"><button class="player-btn" style="width: 100%;"><span class="player-avatar">👤</span>مهرداد عسگری<br><small style="font-size:.65rem;color:var(--gold);font-weight:600">72/72</small></button><button title="حذف بازیکن" style="position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; border-radius: 50%; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; background: rgb(192, 57, 43); color: rgb(255, 255, 255); font-size: 0.75rem; line-height: 1; cursor: pointer; padding: 0px; display: flex; align-items: center; justify-content: center; box-shadow: rgba(0, 0, 0, 0.4) 0px 1px 3px;">✕</button></div></div></div>
+  <div id="saved-players-section" style="margin-top:1.5rem;width:100%;max-width:300px"></div>
 </div>
 
 <!-- ── اصلی ── -->
 <div id="main" style="display: none;">
   <div class="sticky-hdr">
-    <div class="hdr-row">
-      <div class="player-chip">
-        <span id="hdr-avatar">👤</span>
-        <span id="hdr-name">مهرداد عسگری</span>
+    <!-- هدر حالت پیش‌بینی -->
+    <div id="hdr-predict">
+      <div class="hdr-row">
+        <div class="player-chip">
+          <span id="hdr-avatar">👤</span>
+          <span id="hdr-name"></span>
+        </div>
+        <div class="hdr-actions">
+          <button class="del-btn" onclick="deleteMyPredictions()">حذف</button>
+          <button class="chip-btn" onclick="switchPlayer()">تغییر</button>
+          <button class="chip-btn gold" onclick="exportJSON()">خروجی</button>
+        </div>
       </div>
-      <div class="hdr-actions">
-        <button class="del-btn" onclick="deleteMyPredictions()">حذف</button>
-        <button class="chip-btn" onclick="switchPlayer()">تغییر</button>
-        <button class="chip-btn gold" onclick="exportJSON()">خروجی</button>
+      <div class="progress-wrap">
+        <div class="progress-fill" id="prog-fill" style="width:100%"></div>
+      </div>
+      <div class="progress-txt" id="prog-txt">۰ / ۷۲ بازی پیش‌بینی شده</div>
+    </div>
+    <!-- هدر حالت مشاهده -->
+    <div id="hdr-view" style="display:none">
+      <div class="hdr-row">
+        <div class="view-hdr-title">📊 پیش‌بینی‌ها</div>
       </div>
     </div>
-    <div class="progress-wrap">
-      <div class="progress-fill" id="prog-fill" style="width: 100%;"></div>
-    </div>
-    <div class="progress-txt" id="prog-txt">72 / ۷۲ بازی پیش‌بینی شده</div>
   </div>
 
-  <div class="nav-tabs">
+  <!-- تب‌های ورود پیش‌بینی -->
+  <div class="nav-tabs" id="predict-tabs">
     <button class="tab-btn active" id="tab-all" onclick="filterTab('all')">همه</button>
     <button class="tab-btn" id="tab-todo" onclick="filterTab('todo')">باقی‌مانده</button>
     <button class="tab-btn" id="tab-done" onclick="filterTab('done')">انجام‌شده ✓</button>
     <button class="tab-btn" id="tab-groups" onclick="showGroupsTab()">گروه‌ها</button>
     <button class="tab-btn" id="tab-ko" onclick="showKnockoutTab()">حذفی 🔒</button>
-    <div class="tab-sep"></div>
-    <button class="tab-btn" id="tab-real" onclick="showRealTab()">نتایج واقعی</button>
+  </div>
+  <!-- تب‌های مشاهده -->
+  <div class="nav-tabs" id="view-tabs" style="display:none">
+    <button class="tab-btn active" id="tab-real" onclick="showRealTab()">نتایج واقعی</button>
     <button class="tab-btn" id="tab-rank" onclick="showRankTab()">جدول پیش‌بینی‌گران</button>
     <button class="tab-btn" id="tab-compare" onclick="showResults()">مقایسه</button>
   </div>
@@ -4624,10 +4649,15 @@ button{cursor:pointer;font-family:inherit}
         <div class="rank-pts-lbl">امتیاز</div>
       </div></div></div>
 
-  <div class="bottom-bar">
+  <!-- نوار پایین — حالت پیش‌بینی -->
+  <div class="bottom-bar" id="bottom-predict">
+    <button class="bbtn secondary" onclick="goHome()">🏠 خانه</button>
     <button class="export-html-btn" onclick="exportHTML()">📦 خروجی HTML</button>
-    <button class="bbtn secondary" onclick="importJSON()">وارد JSON</button>
-    <button class="bbtn primary" onclick="exportJSON()">💾 ذخیره</button>
+    <button class="bbtn secondary" onclick="exportAllJSON()" style="flex:0;white-space:nowrap;font-size:.78rem">💾 predictions.json</button>
+  </div>
+  <!-- نوار پایین — حالت مشاهده -->
+  <div class="bottom-bar" id="bottom-view" style="display:none">
+    <button class="bbtn secondary" onclick="goHome()">🏠 خانه</button>
   </div>
 </div>
 
@@ -6377,8 +6407,8 @@ button{cursor:pointer;font-family:inherit}
             <span class="pscore">3–0</span>
           </div></div></div></div>
   <div class="bottom-bar">
-    <button class="bbtn secondary" onclick="showMain()">پیش‌بینی‌های من ←</button>
-    <button class="bbtn primary" onclick="exportAllJSON()">خروجی همه</button>
+    <button class="bbtn secondary" onclick="goHome()">🏠 خانه</button>
+    <button class="bbtn primary" onclick="showMain()">بازگشت ←</button>
   </div>
 </div>
 
@@ -6573,6 +6603,7 @@ const BAKED_DATA = {"p":{"ایمان":{"0":[1,0],"1":[1,1],"2":[1,0],"3":[1,0],"
 
 // ── وضعیت ──
 let currentPlayer = null;
+let appMode = null; // 'predict' | 'view'
 let allPredictions = {};
 let realScores = {};
 let koPredictions = {};   // { playerName: { matchId: [s1,s2] } }
@@ -6920,13 +6951,53 @@ function deletePlayer(name) {
   if (typeof showToast === 'function') showToast(`«${name}» حذف شد`);
 }
 
+function showPredictTabs() {
+  document.getElementById('hdr-predict').style.display = 'block';
+  document.getElementById('hdr-view').style.display = 'none';
+  document.getElementById('predict-tabs').style.display = 'flex';
+  document.getElementById('view-tabs').style.display = 'none';
+  document.getElementById('bottom-predict').style.display = 'flex';
+  document.getElementById('bottom-view').style.display = 'none';
+}
+
+function showViewTabs() {
+  document.getElementById('hdr-predict').style.display = 'none';
+  document.getElementById('hdr-view').style.display = 'block';
+  document.getElementById('predict-tabs').style.display = 'none';
+  document.getElementById('view-tabs').style.display = 'flex';
+  document.getElementById('bottom-predict').style.display = 'none';
+  document.getElementById('bottom-view').style.display = 'flex';
+}
+
+function goHome() {
+  saveData();
+  currentPlayer = null;
+  appMode = null;
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('welcome').style.display = 'flex';
+  buildWelcome();
+}
+
+function enterViewMode() {
+  appMode = 'view';
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+  showViewTabs();
+  showRealTab();
+  maybeAutoUpdateRealScoresOnline(true);
+  fetchPredictionsOnline();
+}
+
 function selectPlayer(name) {
+  appMode = 'predict';
   currentPlayer = name;
   savePlayerName(name);
   document.getElementById('hdr-name').textContent = name;
   document.getElementById('hdr-avatar').textContent = '👤';
   document.getElementById('welcome').style.display = 'none';
   document.getElementById('main').style.display = 'block';
+  showPredictTabs();
   buildMatchList();
   updateProgress();
 }
@@ -6934,6 +7005,7 @@ function selectPlayer(name) {
 function switchPlayer() {
   saveData();
   currentPlayer = null;
+  appMode = null;
   document.getElementById('main').style.display = 'none';
   document.getElementById('results').style.display = 'none';
   document.getElementById('welcome').style.display = 'flex';
@@ -8255,8 +8327,12 @@ function showResults() {
 function showMain() {
   document.getElementById('results').style.display = 'none';
   document.getElementById('main').style.display = 'block';
-  if (['compare','rank'].includes(currentFilter)) {
-    filterTab('all');
+  if (appMode === 'view') {
+    showViewTabs();
+    showRankTab();
+  } else {
+    showPredictTabs();
+    if (['compare','rank','real'].includes(currentFilter)) filterTab('all');
   }
 }
 
@@ -8347,14 +8423,14 @@ function buildResultsList() {
       }</div>
       <div class="rcard-stat">
         <div class="rsb-bar">
-          <div style="width:${t1pct}%;background:${t1col}"></div>
-          <div style="width:${dpct}%;background:${dcol}"></div>
-          <div style="width:${t2pct}%;background:${t2col}"></div>
+          <div class="rsb-seg" style="width:${t2pct}%;background:${t2col}">${t2pct > 14 ? t2pct+'%' : ''}</div>
+          <div class="rsb-seg" style="width:${dpct}%;background:${dcol}">${dpct > 14 ? dpct+'%' : ''}</div>
+          <div class="rsb-seg" style="width:${t1pct}%;background:${t1col}">${t1pct > 14 ? t1pct+'%' : ''}</div>
         </div>
         <div class="rsb-legend">
-          <span style="color:${t1lcol}">${f1} ${t1w}</span>
-          <span style="color:${dlcol}">~ ${dr}</span>
-          <span style="color:${t2lcol}">${t2w} ${f2}</span>
+          <span style="color:${t2lcol}">${f2} ${t2pct}%</span>
+          <span style="color:${dlcol}">~ ${dpct}%</span>
+          <span style="color:${t1lcol}">${t1pct}% ${f1}</span>
         </div>
       </div>`;
     list.appendChild(card);
