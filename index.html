@@ -98,6 +98,12 @@ button{cursor:pointer;font-family:inherit}
 .ppick .pscore{color:var(--text);direction:ltr}
 .ppick.highlight{background:var(--green-dark);border:1px solid var(--green)}
 
+/* ── نوار آمار مقایسه ── */
+.rcard-stat{margin-top:.5rem;direction:ltr}
+.rsb-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;gap:1px;background:var(--card2)}
+.rsb-bar div{min-width:0}
+.rsb-legend{display:flex;justify-content:space-between;font-size:.6rem;margin-top:.25rem;color:var(--dim)}
+
 /* ── تست ── */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#27ae60;color:#fff;padding:.6rem 1.4rem;border-radius:24px;font-size:.85rem;font-weight:700;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
@@ -8309,6 +8315,22 @@ function buildResultsList() {
     // در رابط فارسی (RTL)، تیم‌ها برعکس نمایش داده می‌شوند:
     // fa2 (t2) سمت راست، fa1 (t1) سمت چپ — پس امتیاز را هم معکوس نشان می‌دهیم
     const realStr = real ? `<span style="color:var(--gold);font-weight:800;font-size:.8rem;direction:ltr"> (نتیجه: ${real[0]}–${real[1]})</span>` : '';
+
+    const total  = picks.length;
+    const t1w    = picks.filter(({pick}) => pick[0] > pick[1]).length;
+    const dr     = picks.filter(({pick}) => pick[0] === pick[1]).length;
+    const t2w    = picks.filter(({pick}) => pick[0] < pick[1]).length;
+    const t1pct  = Math.round(t1w / total * 100);
+    const dpct   = Math.round(dr  / total * 100);
+    const t2pct  = 100 - t1pct - dpct;
+    const ro     = real ? (real[0] > real[1] ? 't1' : real[0] === real[1] ? 'draw' : 't2') : null;
+    const t1col  = ro === 't1'   ? 'var(--gold)' : 'var(--green)';
+    const dcol   = ro === 'draw' ? 'var(--gold)' : '#4a5568';
+    const t2col  = ro === 't2'   ? 'var(--gold)' : '#3498db';
+    const t1lcol = ro === 't1'   ? 'var(--gold)' : 'var(--green-light)';
+    const dlcol  = ro === 'draw' ? 'var(--gold)' : 'var(--dim)';
+    const t2lcol = ro === 't2'   ? 'var(--gold)' : '#5dade2';
+
     card.innerHTML = `
       <div class="rcard-match">گروه ${m.grp} · ${faDate(m.date)} ${m.time}</div>
       <div class="rcard-teams">${f1} ${fa1} در برابر ${fa2} ${f2}${realStr}</div>
@@ -8322,7 +8344,19 @@ function buildResultsList() {
             <span class="pscore">${pick[1]}–${pick[0]}</span>${ptsTxt}
           </div>`;
         }).join('')
-      }</div>`;
+      }</div>
+      <div class="rcard-stat">
+        <div class="rsb-bar">
+          <div style="width:${t1pct}%;background:${t1col}"></div>
+          <div style="width:${dpct}%;background:${dcol}"></div>
+          <div style="width:${t2pct}%;background:${t2col}"></div>
+        </div>
+        <div class="rsb-legend">
+          <span style="color:${t1lcol}">${f1} ${t1w}</span>
+          <span style="color:${dlcol}">~ ${dr}</span>
+          <span style="color:${t2lcol}">${t2w} ${f2}</span>
+        </div>
+      </div>`;
     list.appendChild(card);
   });
 
