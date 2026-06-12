@@ -4912,9 +4912,28 @@ const ONLINE_PREDICTIONS_SOURCE = {
   url: 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/predictions.json'
 };
 
+// پاک‌سازی داده‌های خراب از حافظه‌ی مرورگر تا رندر خراب نشود
+function sanitizePreds(obj) {
+  const clean = {};
+  if (!obj || typeof obj !== 'object') return clean;
+  Object.entries(obj).forEach(([name, preds]) => {
+    if (!preds || typeof preds !== 'object' || Array.isArray(preds)) return;
+    const cp = {};
+    Object.entries(preds).forEach(([id, v]) => {
+      if (Array.isArray(v) && v.length >= 2 && Number.isFinite(+v[0]) && Number.isFinite(+v[1])) {
+        cp[id] = [+v[0], +v[1]];
+      }
+    });
+    clean[name] = cp;
+  });
+  return clean;
+}
+
 function loadData() {
-  const p = store.get('wc2026_fa_all');   if (p) allPredictions = JSON.parse(p);
-  const kp = store.get('wc2026_fa_kp');   if (kp) koPredictions = JSON.parse(kp);
+  try { const p = store.get('wc2026_fa_all');  if (p) allPredictions = JSON.parse(p); } catch (e) { allPredictions = {}; }
+  try { const kp = store.get('wc2026_fa_kp');  if (kp) koPredictions = JSON.parse(kp); } catch (e) { koPredictions = {}; }
+  allPredictions = sanitizePreds(allPredictions);
+  koPredictions  = sanitizePreds(koPredictions);
 
   // نتایج واقعی هرگز از حافظه خوانده نمی‌شوند؛ همیشه به‌صورت زنده از گیت‌هاب گرفته می‌شوند.
   // هر نسخه‌ی ذخیره‌شده‌ی قدیمی (که ممکن است خراب باشد) را پاک می‌کنیم.
@@ -6622,7 +6641,7 @@ let activeResultsPlayers = null;
 function buildPlayersBar() {
   const bar = document.getElementById('players-bar');
   bar.innerHTML = '';
-  const playersWithData = Object.keys(allPredictions).filter(p => Object.keys(allPredictions[p]).length > 0);
+  const playersWithData = Object.keys(allPredictions).filter(p => Object.keys(allPredictions[p] || {}).length > 0);
   if (activeResultsPlayers === null) activeResultsPlayers = new Set(playersWithData);
 
   const allBtn = document.createElement('div');
@@ -6657,8 +6676,8 @@ function buildResultsList() {
 
   MATCHES.forEach(m => {
     const picks = players.map(p => ({
-      player: p, pick: allPredictions[p] && allPredictions[p][m.id]
-    })).filter(x => x.pick !== undefined);
+      player: p, pick: (allPredictions[p] && allPredictions[p][m.id]) || undefined
+    })).filter(x => Array.isArray(x.pick) && x.pick.length >= 2);
     if (picks.length === 0) return;
 
     const f1 = FLAGS[m.t1] || '🏳';
