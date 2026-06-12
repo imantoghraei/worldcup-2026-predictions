@@ -4674,7 +4674,7 @@ button{cursor:pointer;font-family:inherit}
 </div>
 
 <!-- ── مقایسه (محتوا به compare-view در #main منتقل شد) ── -->
-<div id="results" style="display: none;">
+<div id="results" style="display: none;"></div>
 
 <div class="toast" id="toast">1 فایل پیش‌بینی وارد شد!</div>
 
@@ -6651,7 +6651,7 @@ function buildResultsList() {
   const players = activeResultsPlayers ? Array.from(activeResultsPlayers) : Object.keys(allPredictions);
 
   if (players.length === 0) {
-    list.innerHTML = '<div style="text-align:center;color:var(--dim);padding:2rem">هنوز پیش‌بینی‌ای برای مقایسه وجود ندارد.<br>فایل‌های JSON دوستانتان را وارد کنید.</div>';
+    list.innerHTML = '<div style="text-align:center;color:var(--dim);padding:2rem">هنوز پیش‌بینی‌ای برای مقایسه وجود ندارد.<br>دکمه ⟳ sync را بزنید تا پیش‌بینی‌ها از گیت‌هاب دریافت شوند.</div>';
     return;
   }
 
