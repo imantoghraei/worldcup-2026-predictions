@@ -288,15 +288,15 @@ button{cursor:pointer;font-family:inherit}
     <button class="tab-btn active" id="tab-all" onclick="filterTab('all')">همه</button>
     <button class="tab-btn" id="tab-todo" onclick="filterTab('todo')">باقی‌مانده</button>
     <button class="tab-btn" id="tab-done" onclick="filterTab('done')">انجام‌شده ✓</button>
-    <button class="tab-btn" id="tab-groups" onclick="showGroupsTab()">گروه‌ها</button>
     <button class="tab-btn" id="tab-ko" onclick="showKnockoutTab()">حذفی 🔒</button>
+    <button class="tab-btn" id="tab-groups" onclick="showGroupsTab()">گروه‌ها</button>
   </div>
   <!-- تب‌های مشاهده -->
   <div class="nav-tabs" id="view-tabs" style="display:none">
     <button class="tab-btn active" id="tab-real" onclick="showRealTab()">نتایج واقعی</button>
+    <button class="tab-btn" id="tab-compare" onclick="showResults()">مقایسه</button>
     <button class="tab-btn" id="tab-rank" onclick="showRankTab()">جدول پیش‌بینی‌گران</button>
     <button class="tab-btn" id="tab-groups-v" onclick="showGroupsTab()">گروه‌ها</button>
-    <button class="tab-btn" id="tab-compare" onclick="showResults()">مقایسه</button>
   </div>
 
   <div class="content" id="match-list" style="display: block;"><div class="date-sep"><span>📅 پنج‌شنبه 11 ژوئن</span></div><div class="match-card done" id="card-0">
@@ -6593,6 +6593,7 @@ function handleImport(e) {
 // ── مقایسه ──
 function showResults() {
   currentFilter = 'compare';
+  activeResultsPlayers = null; // reset so latest allPredictions is picked up
   document.getElementById('results').style.display = 'none';
   document.getElementById('main').style.display = 'block';
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
