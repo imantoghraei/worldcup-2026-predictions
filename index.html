@@ -6594,11 +6594,26 @@ const store = {
   }
 };
 
+// ── منبع نتایج آنلاین ──
+// زود تعریف می‌شود تا پیش از اجرای اولیه‌ی برنامه مقداردهی شده باشد.
+// ⬇️⬇️⬇️ این آدرس را به مخزن گیت‌هاب خودتان تغییر دهید ⬇️⬇️⬇️
+// قالب: https://raw.githubusercontent.com/USERNAME/REPO/main/results.json
+const ONLINE_SCORE_SOURCE = {
+  name: 'نتایج گیت‌هاب (دستی)',
+  url: 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/results.json'
+};
+// ⬆️⬆️⬆️ این آدرس را به مخزن گیت‌هاب خودتان تغییر دهید ⬆️⬆️⬆️
+
 function loadData() {
   const p = store.get('wc2026_fa_all');   if (p) allPredictions = JSON.parse(p);
-  const r = store.get('wc2026_fa_real');  if (r) realScores     = JSON.parse(r);
   const kp = store.get('wc2026_fa_kp');   if (kp) koPredictions = JSON.parse(kp);
-  const kr = store.get('wc2026_fa_kr');   if (kr) koReal        = JSON.parse(kr);
+
+  // نتایج واقعی هرگز از حافظه خوانده نمی‌شوند؛ همیشه به‌صورت زنده از گیت‌هاب گرفته می‌شوند.
+  // هر نسخه‌ی ذخیره‌شده‌ی قدیمی (که ممکن است خراب باشد) را پاک می‌کنیم.
+  store.remove('wc2026_fa_real');
+  store.remove('wc2026_fa_kr');
+  realScores = {};
+  koReal = {};
 
   // اگر فایل HTML داده‌ی baked دارد، آن را با داده‌ی مرورگر «ادغام» کن
   // (به‌جای نادیده‌گرفتن یکی) تا با تعویض بازیکن هیچ داده‌ای حذف نشود.
@@ -6614,20 +6629,19 @@ function loadData() {
       if (removed.has(name)) return;
       if (!koPredictions[name]) koPredictions[name] = preds;
     });
-    if (Object.keys(realScores).length === 0 && BAKED_DATA.r) realScores = BAKED_DATA.r;
-    if (Object.keys(koReal).length === 0 && BAKED_DATA.kr) koReal = BAKED_DATA.kr;
 
     const names = new Set(JSON.parse(store.get('wc2026_fa_names') || '[]'));
     Object.keys(allPredictions).forEach(n => names.add(n));
     store.set('wc2026_fa_names', JSON.stringify([...names]));
 
-    saveData(); saveRealScores(); saveKoPreds(); saveKoReal();
+    saveData(); saveKoPreds();
   }
 }
 function saveData()       { store.set('wc2026_fa_all',  JSON.stringify(allPredictions)); }
-function saveRealScores() { store.set('wc2026_fa_real', JSON.stringify(realScores)); }
+// نتایج واقعی ذخیره نمی‌شوند (همیشه زنده از گیت‌هاب) — این توابع عمداً خالی‌اند:
+function saveRealScores() { /* fetch-only: do not persist */ }
+function saveKoReal()     { /* fetch-only: do not persist */ }
 function saveKoPreds()    { store.set('wc2026_fa_kp',   JSON.stringify(koPredictions)); }
-function saveKoReal()     { store.set('wc2026_fa_kr',   JSON.stringify(koReal)); }
 
 // ── امتیاز محاسبه‌ای ──
 function calcScore(pred, real, isKo = false) {
@@ -7227,15 +7241,7 @@ function adjustKo(matchId, team, delta) {
 
 
 // ── دریافت خودکار نتایج از اینترنت ──
-// This source works on GitHub Pages without an API key. It is not guaranteed to be live;
-// it fills the "real scores" section only when the upstream JSON already contains final scores.
-// ⬇️⬇️⬇️ این آدرس را به مخزن گیت‌هاب خودتان تغییر دهید ⬇️⬇️⬇️
-// قالب: https://raw.githubusercontent.com/USERNAME/REPO/main/results.json
-const ONLINE_SCORE_SOURCE = {
-  name: 'نتایج گیت‌هاب (دستی)',
-  url: 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/results.json'
-};
-// ⬆️⬆️⬆️ این آدرس را به مخزن گیت‌هاب خودتان تغییر دهید ⬆️⬆️⬆️
+// (تعریف ONLINE_SCORE_SOURCE به بالای فایل منتقل شده تا پیش از اجرای اولیه مقداردهی شود)
 
 function normalizeTeamKey(name) {
   return String(name || '')
@@ -7471,7 +7477,7 @@ function showRealTab() {
   hideAllViews();
   document.getElementById('real-view').style.display = 'block';
   buildRealView();
-  maybeAutoUpdateRealScoresOnline();
+  maybeAutoUpdateRealScoresOnline(true);
 }
 
 function showRankTab() {
@@ -7498,8 +7504,11 @@ function buildRealView() {
     // اگر داده‌ی ذخیره‌شده خراب باشد، به‌جای صفحه‌ی خالی پیام بده و امکان پاکسازی بده
     const box = document.createElement('div');
     box.style.cssText = 'text-align:center;color:var(--dim);padding:1.5rem;font-size:.85rem;line-height:1.8';
+    const detail = (err && (err.stack || err.message)) ? String(err.stack || err.message) : 'نامشخص';
     box.innerHTML = '⚠️ هنگام نمایش نتایج خطایی رخ داد.<br>ممکن است داده‌ی ذخیره‌شده خراب باشد.<br><br>' +
-      '<button class="online-score-btn secondary" onclick="repairRealScores()">🧹 پاکسازی و تلاش دوباره</button>';
+      '<button class="online-score-btn secondary" onclick="repairRealScores()">🧹 پاکسازی و تلاش دوباره</button>' +
+      '<br><br><div style="text-align:left;direction:ltr;font-size:.62rem;color:#c97a7a;background:#1a0f12;border:1px solid #4a2530;border-radius:8px;padding:.6rem;margin-top:.8rem;white-space:pre-wrap;word-break:break-word;max-height:40vh;overflow:auto">' +
+      detail.replace(/</g,'&lt;') + '</div>';
     container.appendChild(box);
   }
 }
@@ -7507,7 +7516,7 @@ function buildRealView() {
 // نتایج خراب را اصلاح/پاک می‌کند سپس دوباره رندر می‌کند
 function repairRealScores() {
   realScores = sanitizeScoreMap(realScores);
-  koReal = sanitizeScoreMap(koReal);
+  koReal = sanitizeKoMap(koReal);
   saveRealScores();
   saveKoReal();
   buildRealView();
@@ -7525,7 +7534,27 @@ function sanitizeScoreMap(map) {
   return clean;
 }
 
+// مانند بالا ولی فرم شیئی نتایج حذفی { s:[a,b], pw } را هم نگه می‌دارد
+function sanitizeKoMap(map) {
+  const clean = {};
+  Object.entries(map || {}).forEach(([id, v]) => {
+    let arr = null, pw = null;
+    if (Array.isArray(v)) arr = v;
+    else if (v && typeof v === 'object' && Array.isArray(v.s)) { arr = v.s; pw = v.pw; }
+    if (!arr || arr.length < 2) return;
+    const a = Number(arr[0]), b = Number(arr[1]);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return;
+    if (pw === 0 || pw === 1) clean[id] = { s: [a, b], pw };
+    else clean[id] = [a, b];
+  });
+  return clean;
+}
+
 function renderRealMatches(container) {
+  // پاکسازی پیشگیرانه: مقادیر خراب را حذف کن تا محاسبات رده‌بندی و حذفی هرگز به آن‌ها نرسند
+  realScores = sanitizeScoreMap(realScores);
+  koReal = sanitizeKoMap(koReal);
+
   // Section header helper
   function addSectionHeader(label) {
     const h = document.createElement('div');
