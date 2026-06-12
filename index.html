@@ -4679,6 +4679,17 @@ button{cursor:pointer;font-family:inherit}
 <div class="toast" id="toast">1 فایل پیش‌بینی وارد شد!</div>
 
 <script>
+// نسخه‌ی کد — برای تشخیص اینکه آیا مرورگر آخرین نسخه را اجرا می‌کند
+const APP_VERSION = '2026-06-12.7';
+// گزارش خطاهای پیش‌بینی‌نشده به‌جای صفحه‌ی خالی و بی‌صدا
+window.addEventListener('error', function (e) {
+  try {
+    const t = document.getElementById('toast');
+    if (t) { t.textContent = '⚠️ خطا: ' + (e.message || e.error); t.classList.add('show'); }
+    console.error('[wc2026]', e.error || e.message);
+  } catch (_) {}
+});
+
 // ── داده‌ها ──
 // بدون بازیکنان پیش‌فرض — نام‌ها از localStorage بارگذاری می‌شوند
 const PLAYERS = [];
@@ -6619,8 +6630,14 @@ function showResults() {
   document.getElementById('tab-compare').classList.add('active');
   hideAllViews();
   document.getElementById('compare-view').style.display = 'block';
-  buildPlayersBar();
-  buildResultsList();
+  try {
+    buildPlayersBar();
+    buildResultsList();
+  } catch (err) {
+    console.error('[wc2026] showResults:', err);
+    const list = document.getElementById('results-list');
+    if (list) list.innerHTML = '<div style="text-align:center;color:var(--red);padding:2rem">خطا در نمایش مقایسه:<br>' + (err && err.message) + '</div>';
+  }
   maybeAutoUpdateRealScoresOnline();
 }
 
