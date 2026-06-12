@@ -4680,7 +4680,7 @@ button{cursor:pointer;font-family:inherit}
 
 <script>
 // نسخه‌ی کد — برای تشخیص اینکه آیا مرورگر آخرین نسخه را اجرا می‌کند
-const APP_VERSION = '2026-06-12.7';
+const APP_VERSION = '2026-06-12.8';
 // گزارش خطاهای پیش‌بینی‌نشده به‌جای صفحه‌ی خالی و بی‌صدا
 window.addEventListener('error', function (e) {
   try {
@@ -4879,6 +4879,7 @@ const BAKED_DATA = {"p":{"ایمان":{"0":[1,0],"1":[1,1],"2":[1,0],"3":[1,0],"
 // ── وضعیت ──
 let currentPlayer = null;
 let appMode = null; // 'predict' | 'view'
+let activeResultsPlayers = null; // declared early to avoid temporal-dead-zone errors during startup
 let allPredictions = {};
 let realScores = {};
 let koPredictions = {};   // { playerName: { matchId: [s1,s2] } }
@@ -6652,8 +6653,6 @@ function showMain() {
     if (['compare','rank','real'].includes(currentFilter)) filterTab('all');
   }
 }
-
-let activeResultsPlayers = null;
 
 function buildPlayersBar() {
   const bar = document.getElementById('players-bar');
