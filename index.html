@@ -240,17 +240,19 @@ button{cursor:pointer;font-family:inherit}
   <div class="wc-sub">پیش‌بینی مرحله گروهی</div>
 
   <div class="wmode-wrap">
-    <button class="wmode-btn active" id="wbtn-predict">✏️<br>ورود پیش‌بینی</button>
-    <button class="wmode-btn" id="wbtn-view" onclick="enterViewMode()">📊<br>مشاهده</button>
+    <button class="wmode-btn" id="wbtn-predict" onclick="showPredictSection()">✏️<br>وارد کردن پیش‌بینی‌ها</button>
+    <button class="wmode-btn" id="wbtn-view" onclick="enterViewMode()">📊<br>دیدن پیش‌بینی‌ها</button>
   </div>
 
-  <div class="custom-join">
-    <div class="custom-join-row">
-      <input type="text" id="custom-name" placeholder="نام خود را وارد کنید..." maxlength="30" onkeydown="if(event.key==='Enter')joinCustom()">
-      <button onclick="joinCustom()">ورود ←</button>
+  <div id="predict-section" style="display:none;flex-direction:column;align-items:center;width:100%">
+    <div class="custom-join">
+      <div class="custom-join-row">
+        <input type="text" id="custom-name" placeholder="نام خود را وارد کنید..." maxlength="30" onkeydown="if(event.key==='Enter')joinCustom()">
+        <button onclick="joinCustom()">وارد شوید ←</button>
+      </div>
     </div>
+    <div id="saved-players-section" style="margin-top:1.5rem;width:100%;max-width:300px"></div>
   </div>
-  <div id="saved-players-section" style="margin-top:1.5rem;width:100%;max-width:300px"></div>
 </div>
 
 <!-- ── اصلی ── -->
@@ -6900,8 +6902,18 @@ buildWelcome();
 maybeAutoUpdateRealScoresOnline();
 fetchPredictionsOnline();
 
+function showPredictSection() {
+  document.getElementById('predict-section').style.display = 'flex';
+  document.getElementById('wbtn-predict').classList.add('active');
+  document.getElementById('wbtn-view').classList.remove('active');
+}
+
 function buildWelcome() {
-  // Show previously entered names
+  // Collapse predict section back to landing state
+  document.getElementById('predict-section').style.display = 'none';
+  document.getElementById('wbtn-predict').classList.remove('active');
+  document.getElementById('wbtn-view').classList.remove('active');
+  // Rebuild player list (content is ready when section is next expanded)
   const section = document.getElementById('saved-players-section');
   section.innerHTML = '';
   const names = getSavedNames();
@@ -6948,6 +6960,7 @@ function deletePlayer(name) {
   saveData();
   saveKoPreds();
   buildWelcome();
+  showPredictSection();
   if (typeof showToast === 'function') showToast(`«${name}» حذف شد`);
 }
 
