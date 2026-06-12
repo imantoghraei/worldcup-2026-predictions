@@ -4629,7 +4629,10 @@ button{cursor:pointer;font-family:inherit}
 <div id="results" style="display: none;">
   <div class="results-hdr">
     <h2>📊 همه پیش‌بینی‌ها</h2>
-    <button class="back-btn" onclick="showMain()">بازگشت ←</button>
+    <div style="display:flex;gap:.5rem">
+      <button class="back-btn" onclick="fetchPredictionsOnline(false)" title="دریافت آخرین پیش‌بینی‌ها از گیت‌هاب">⟳ sync</button>
+      <button class="back-btn" onclick="showMain()">بازگشت ←</button>
+    </div>
   </div>
   <div class="results-import" onclick="triggerImport()">
     <div style="font-size:1.5rem">📂</div>
@@ -6602,7 +6605,11 @@ const ONLINE_SCORE_SOURCE = {
   name: 'نتایج گیت‌هاب (دستی)',
   url: 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/results.json'
 };
-// ⬆️⬆️⬆️ این آدرس را به مخزن گیت‌هاب خودتان تغییر دهید ⬆️⬆️⬆️
+
+const ONLINE_PREDICTIONS_SOURCE = {
+  name: 'پیش‌بینی‌های گیت‌هاب',
+  url: 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/predictions.json'
+};
 
 function loadData() {
   const p = store.get('wc2026_fa_all');   if (p) allPredictions = JSON.parse(p);
@@ -6854,6 +6861,7 @@ document.getElementById('results').style.display = 'none';
 
 buildWelcome();
 maybeAutoUpdateRealScoresOnline();
+fetchPredictionsOnline();
 
 function buildWelcome() {
   // Show previously entered names
@@ -7359,6 +7367,49 @@ function maybeAutoUpdateRealScoresOnline(force = false) {
 
   // Fire-and-forget: this updates realScores, saves to localStorage, and rebuilds the current tab if needed.
   updateRealScoresOnline();
+}
+
+async function fetchPredictionsOnline(silent = true) {
+  try {
+    const res = await fetch(`${ONLINE_PREDICTIONS_SOURCE.url}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const onlinePreds = (data && typeof data.predictions === 'object') ? data.predictions : null;
+    const onlineKo = (data && typeof data.koPredictions === 'object') ? data.koPredictions : {};
+    if (!onlinePreds) throw new Error('فرمت نادرست');
+
+    let changed = false;
+    Object.entries(onlinePreds).forEach(([name, preds]) => {
+      if (name === currentPlayer) return;
+      const localCount = Object.keys(allPredictions[name] || {}).length;
+      const onlineCount = Object.keys(preds).length;
+      if (onlineCount > 0 && onlineCount >= localCount) {
+        allPredictions[name] = preds;
+        changed = true;
+      }
+    });
+    Object.entries(onlineKo).forEach(([name, preds]) => {
+      if (name === currentPlayer) return;
+      const localCount = Object.keys(koPredictions[name] || {}).length;
+      const onlineCount = Object.keys(preds).length;
+      if (onlineCount > 0 && onlineCount >= localCount) {
+        koPredictions[name] = preds;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      saveData(); saveKoPreds();
+      buildWelcome();
+      if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); }
+      else if (currentFilter === 'rank') buildRankView();
+      else if (currentFilter === 'groups') buildGroupsView(currentPlayer);
+    }
+    store.set('wc2026_preds_last_sync', String(Date.now()));
+    if (!silent) showToast('پیش‌بینی‌های آنلاین به‌روز شدند');
+  } catch (e) {
+    if (!silent) showToast('خطا در دریافت پیش‌بینی‌ها از گیت‌هاب');
+  }
 }
 
 async function updateRealScoresOnline(btn) {
@@ -8097,15 +8148,19 @@ function exportJSON() {
 }
 
 function exportAllJSON() {
-  const data = { predictions: allPredictions, realScores, koPredictions, koReal };
+  const data = {
+    updated: new Date().toISOString(),
+    predictions: allPredictions,
+    koPredictions
+  };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'jj2026_همه_پیش‌بینی‌ها.json';
+  a.download = 'predictions.json';
   a.click();
   URL.revokeObjectURL(url);
-  showToast('همه پیش‌بینی‌ها و نتایج صادر شدند!');
+  showToast('predictions.json آماده — در ریپو گیت‌هاب کامیت کنید');
 }
 
 function exportHTML() {
