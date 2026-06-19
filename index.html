@@ -5297,6 +5297,10 @@ function matchDateValue(m) {
   return Date.UTC(2026, month, day, hh || 0, mm || 0);
 }
 
+function chronologicalMatches(matches) {
+  return [...matches].sort((a, b) => matchDateValue(a) - matchDateValue(b) || a.id - b.id);
+}
+
 function allMatchItems() {
   return [
     ...MATCHES.map(m => ({...m, kind:'group'})),
@@ -5866,7 +5870,7 @@ function buildMatchList() {
   const container = document.getElementById('match-list');
   container.innerHTML = '';
   const groups = {};
-  MATCHES.forEach(m => {
+  chronologicalMatches(MATCHES).forEach(m => {
     if (!groups[m.date]) groups[m.date] = [];
     groups[m.date].push(m);
   });
@@ -7311,7 +7315,7 @@ function buildResultsList() {
     return;
   }
 
-  MATCHES.forEach(m => {
+  chronologicalMatches(MATCHES).forEach(m => {
     const picks = players.map(p => ({
       player: p, pick: (allPredictions[p] && allPredictions[p][m.id]) || undefined
     })).filter(x => Array.isArray(x.pick) && x.pick.length >= 2);
