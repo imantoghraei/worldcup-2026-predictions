@@ -191,11 +191,14 @@ button{cursor:pointer;font-family:inherit}
 .rank-move.down{border-color:rgba(231,76,60,.55);color:var(--red);background:rgba(231,76,60,.12)}
 .rank-move.same{color:var(--dim)}
 .rank-badges{display:flex;gap:.32rem;flex-wrap:wrap;margin-top:.48rem}
-.fun-badge{display:inline-flex;align-items:center;gap:.22rem;border-radius:999px;border:1px solid rgba(240,165,0,.28);background:rgba(240,165,0,.10);color:var(--gold);font-size:.64rem;font-weight:900;padding:.18rem .5rem;line-height:1.35}
+.fun-badge{display:inline-flex;align-items:center;gap:.22rem;border-radius:999px;border:1px solid rgba(240,165,0,.28);background:rgba(240,165,0,.10);color:var(--gold);font-size:.64rem;font-weight:900;padding:.18rem .5rem;line-height:1.35;font-family:inherit;cursor:pointer;position:relative;appearance:none;-webkit-appearance:none}
 .fun-badge.green{border-color:rgba(39,174,96,.35);background:rgba(26,122,63,.14);color:var(--green-light)}
 .fun-badge.blue{border-color:rgba(52,152,219,.35);background:rgba(52,152,219,.12);color:#5dade2}
 .fun-badge.red{border-color:rgba(231,76,60,.35);background:rgba(231,76,60,.10);color:#ff8a80}
 .fun-badge.dim{border-color:var(--border);background:var(--card2);color:var(--dim)}
+.badge-tip{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%) translateY(4px);width:max-content;max-width:min(240px,72vw);background:#071019;color:var(--text);border:1px solid rgba(240,165,0,.45);box-shadow:0 8px 24px rgba(0,0,0,.38);border-radius:9px;padding:.45rem .6rem;font-size:.68rem;font-weight:700;line-height:1.65;text-align:right;white-space:normal;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s,transform .15s;z-index:250}
+.badge-tip::after{content:'';position:absolute;left:50%;top:100%;transform:translateX(-50%);border:6px solid transparent;border-top-color:rgba(240,165,0,.45)}
+.fun-badge:hover .badge-tip,.fun-badge:focus-visible .badge-tip,.fun-badge.tip-open .badge-tip{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
 .rank-drama-card,.recap-card{background:linear-gradient(135deg,rgba(26,122,63,.15),rgba(240,165,0,.08));border:1px solid rgba(240,165,0,.28);border-radius:14px;padding:.85rem .9rem;margin-bottom:.75rem}
 .rank-drama-title,.recap-title{font-size:.9rem;font-weight:900;color:var(--gold);margin-bottom:.55rem}
 .drama-grid,.recap-grid{display:grid;grid-template-columns:1fr;gap:.45rem}
@@ -5146,7 +5149,7 @@ function buildPredictionBadges(playerName, totals) {
   if (p.groupCount >= 20 && p.avgGoals >= 3.1) add('🔥', 'فوتبال هجومی', 'red', `میانگین ${p.avgGoals.toFixed(1)} گل`);
   if (p.groupCount >= 20 && p.avgGoals <= 1.8) add('🧱', 'دیوار دفاعی', 'blue', `میانگین ${p.avgGoals.toFixed(1)} گل`);
   if (p.highScores >= 15 || p.maxGoals >= 7) add('🎲', 'ریسک‌پذیر', 'red', 'نتایج پرگل زیاد پیش‌بینی کرده');
-  if (p.cleanSheets >= 28) add('🧤', 'دروازه‌بسته‌بین', 'green', `${p.cleanSheets} کلین‌شیت پیش‌بینی کرده`);
+  if (p.groupCount >= 60 && p.cleanSheets >= 38 && p.cleanSheets / p.groupCount >= .55) add('🧤', 'دروازه‌بسته‌بین', 'green', `${p.cleanSheets} بازی از ${p.groupCount} پیش‌بینی‌اش کلین‌شیت داشته`);
   if (p.favoriteTeam && p.favoriteTeam.count >= 8) add('❤️', `هوادار ${teamFa(p.favoriteTeam.team)}`, 'hot', `${p.favoriteTeam.count} برد برای این تیم`);
   if (!badges.length && p.groupCount > 0) add('✨', 'شروع طوفانی', 'dim', 'با چند پیش‌بینی اول وارد بازی شده');
 
@@ -5157,8 +5160,23 @@ function renderPredictionBadges(playerName, totals) {
   const badges = buildPredictionBadges(playerName, totals);
   if (!badges.length) return '';
   return `<div class="rank-badges">${
-    badges.map(b => `<span class="fun-badge ${escapeHtml(b.cls || '')}" title="${escapeHtml(b.desc || b.title)}"><span>${b.icon}</span>${escapeHtml(b.title)}</span>`).join('')
+    badges.map(b => `<button type="button" class="fun-badge ${escapeHtml(b.cls || '')}" onclick="showBadgeTip(event)" aria-label="${escapeHtml((b.title || '') + ': ' + (b.desc || b.title))}"><span>${b.icon}</span>${escapeHtml(b.title)}<span class="badge-tip" role="tooltip">${escapeHtml(b.desc || b.title)}</span></button>`).join('')
   }</div>`;
+}
+
+function showBadgeTip(event) {
+  const badge = event.currentTarget;
+  document.querySelectorAll('.fun-badge.tip-open').forEach(el => {
+    if (el !== badge) el.classList.remove('tip-open');
+  });
+  badge.classList.toggle('tip-open');
+  event.stopPropagation();
+}
+
+if (document.addEventListener) {
+  document.addEventListener('click', function () {
+    document.querySelectorAll('.fun-badge.tip-open').forEach(el => el.classList.remove('tip-open'));
+  });
 }
 
 function leaderboardSignature() {
