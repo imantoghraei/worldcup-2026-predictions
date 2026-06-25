@@ -5268,7 +5268,6 @@ function badgeLeaderSet(rows, valueFn, options = {}) {
 function buildBadgeLeaders(rankings) {
   const rows = rankings.map(r => ({ ...r, profile: r.profile || predictionProfile(r.name) }));
   return {
-    complete: badgeLeaderSet(rows, r => r.profile.groupCount, { min: MATCHES.length }),
     exact: badgeLeaderSet(rows, r => r.exact, { min: 1 }),
     gd: badgeLeaderSet(rows, r => r.gd, { min: 1 }),
     winner: badgeLeaderSet(rows, r => r.winner, { min: 1 }),
@@ -5299,7 +5298,6 @@ function buildPredictionBadges(playerName, totals, leaders) {
   const badges = [];
   const add = (icon, title, cls, desc) => badges.push({icon, title, cls, desc});
 
-  if (isBadgeLeader(leaders, 'complete', playerName)) add('✅', 'تکمیل‌گر', 'green', 'همه ۷۲ بازی گروهی را پیش‌بینی کرده');
   if (isBadgeLeader(leaders, 'exact', playerName)) add('🎯', 'جادوگر نتیجه دقیق', 'hot', `${totals.exact} نتیجه دقیق؛ بهترین آمار این بخش`);
   if (isBadgeLeader(leaders, 'gd', playerName)) add('📐', 'استاد تفاضل گل', 'blue', `${totals.gd} بار تفاضل گل درست؛ صدر این معیار`);
   if (isBadgeLeader(leaders, 'winner', playerName)) add('✅', 'شکارچی برنده', 'green', `${totals.winner} برنده درست؛ بیشترین بین بازیکنان`);
@@ -6516,7 +6514,6 @@ function addOnlineTablePanel(container) {
     <div class="online-score-title">📋 جدول واقعی گروه‌ها</div>
     <div class="online-score-text">
       این بخش از فایل <b>table.json</b> خوانده می‌شود. رتبه‌های اول و دوم هر گروه به محض ثبت شدن امتیاز صعود می‌دهند؛ امتیاز تیم‌های سوم فقط وقتی ۸ تیم سوم برتر کامل شوند فعال می‌شود.
-      <br>برای ساخت JSON از <a class="table-link" href="table-editor.html" target="_blank" rel="noopener">ویرایشگر جدول واقعی</a> استفاده کنید.
       <br>آخرین بررسی: <strong>${last}</strong>
     </div>
     <div class="online-score-actions">
