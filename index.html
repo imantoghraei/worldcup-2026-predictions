@@ -208,7 +208,9 @@ button{cursor:pointer;font-family:inherit}
 .evo-grid{stroke:rgba(122,158,138,.16);stroke-width:1}
 .evo-label{fill:var(--dim);font-size:11px;font-weight:700}
 .evo-line{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.evo-point{stroke:var(--bg);stroke-width:2}
+.evo-point{stroke:var(--bg);stroke-width:2;cursor:pointer}
+.evo-hit{fill:rgba(255,255,255,0);stroke:none;cursor:pointer;pointer-events:all}
+.evo-tip-box{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.48rem .6rem;margin-top:.55rem;font-size:.7rem;font-weight:800;color:var(--text);line-height:1.55;text-align:right}
 .evo-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.4rem;margin-top:.7rem}
 .evo-legend-item{display:flex;align-items:center;gap:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.42rem .5rem;min-width:0}
 .evo-dot{width:.65rem;height:.65rem;border-radius:50%;flex-shrink:0}
@@ -4991,6 +4993,8 @@ const ONLINE_TABLE_SOURCE = {
   url: 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/table.json'
 };
 
+const AUTO_SCORE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+
 // پاک‌سازی داده‌های خراب از حافظه‌ی مرورگر تا رندر خراب نشود
 function sanitizePreds(obj) {
   const clean = {};
@@ -5508,6 +5512,17 @@ function scrollToCurrentDateIn(containerId) {
   }, 80);
 }
 
+function scrollToRankTop() {
+  setTimeout(() => {
+    const rankView = document.getElementById('rank-view');
+    if (rankView && rankView.scrollIntoView) {
+      rankView.scrollIntoView({ behavior: 'auto', block: 'start' });
+    } else if (window.scrollTo) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, 80);
+}
+
 function allMatchItems() {
   return [
     ...MATCHES.map(m => ({...m, kind:'group'})),
@@ -5702,8 +5717,12 @@ function renderRankEvolutionSvg(data, rankings) {
       const cx = x(idx).toFixed(1);
       const cy = y(value).toFixed(1);
       const title = `${evolutionPlayerName(p)}: ${value} امتیاز · رتبه ${rank} · ${s.label}`;
-      return `<circle class="evo-point" cx="${cx}" cy="${cy}" r="4" fill="${color}">
-        <title>${escapeHtml(title)}</title>
+      const safeTitle = escapeHtml(title);
+      return `<circle class="evo-hit" cx="${cx}" cy="${cy}" r="12" data-info="${safeTitle}" onclick="showEvolutionTip(event)" aria-label="${safeTitle}">
+        <title>${safeTitle}</title>
+      </circle>
+      <circle class="evo-point" cx="${cx}" cy="${cy}" r="4" fill="${color}" data-info="${safeTitle}" onclick="showEvolutionTip(event)" aria-label="${safeTitle}">
+        <title>${safeTitle}</title>
       </circle>`;
     }).join('');
     return `<polyline class="evo-line" points="${points}" stroke="${color}"></polyline>${circles}`;
@@ -5717,6 +5736,14 @@ function renderRankEvolutionSvg(data, rankings) {
     ${xLabels}
     ${lines}
   </svg>`;
+}
+
+function showEvolutionTip(event) {
+  const target = event && event.currentTarget ? event.currentTarget : null;
+  const info = target ? target.getAttribute('data-info') : '';
+  const box = document.getElementById('evo-tip-box');
+  if (box && info) box.textContent = info;
+  if (event && event.stopPropagation) event.stopPropagation();
 }
 
 function buildRankEvolutionCard(rankings) {
@@ -5737,6 +5764,8 @@ function buildRankEvolutionCard(rankings) {
   }
 
   const latest = data.snapshots[data.snapshots.length - 1];
+  const topPlayer = rankings[0];
+  const defaultInfo = topPlayer ? `${evolutionPlayerName(topPlayer)}: ${latest.values[topPlayer.name] || 0} امتیاز · رتبه ${latest.ranks[topPlayer.name] || '-'} · ${latest.label}` : 'برای دیدن جزئیات، روی نقطه‌های نمودار بزنید.';
   const legend = rankings.map((p, i) => {
     const color = rankEvolutionColor(i);
     return `<div class="evo-legend-item">
@@ -5753,6 +5782,7 @@ function buildRankEvolutionCard(rankings) {
     </div>
   </div>
   <div class="evo-chart-wrap">${renderRankEvolutionSvg(data, rankings)}</div>
+  <div class="evo-tip-box" id="evo-tip-box">${escapeHtml(defaultInfo)}</div>
   <div class="evo-legend">${legend}</div>`;
   return card;
 }
@@ -6722,8 +6752,6 @@ function setOnlineStatus(msg, kind) {
   el.className = `online-score-status ${kind || ''}`;
 }
 
-const AUTO_SCORE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
-
 function maybeAutoUpdateRealScoresOnline(force = false) {
   const lastMs = Number(store.get('wc2026_real_last_online_update_ms') || 0);
   const due = force || !lastMs || (Date.now() - lastMs > AUTO_SCORE_CHECK_INTERVAL_MS);
@@ -6786,7 +6814,7 @@ async function updateRealTableOnline(btn) {
     const thirdsDone = realBestThirdTeams().length;
 
     if (currentFilter === 'real-table') buildRealTableView();
-    else if (currentFilter === 'rank') buildRankView();
+    else if (currentFilter === 'rank') { buildRankView(); scrollToRankTop(); }
     else if (currentFilter === 'ko') buildKnockoutView(currentKoRound);
     else if (currentFilter === 'real') { buildRealView(); scrollToCurrentDateIn('real-view'); }
 
@@ -6838,7 +6866,7 @@ async function fetchPredictionsOnline(silent = true, btn = null) {
       saveData(); saveKoPreds();
       buildWelcome();
       if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); scrollToCurrentDateIn('results-list'); }
-      else if (currentFilter === 'rank') buildRankView();
+      else if (currentFilter === 'rank') { buildRankView(); scrollToRankTop(); }
       else if (currentFilter === 'daily') buildDailyView();
       else if (currentFilter === 'real-table') buildRealTableView();
       else if (currentFilter === 'groups') buildGroupsView(currentPlayer);
@@ -6928,7 +6956,7 @@ async function updateRealScoresOnline(btn) {
     store.set('wc2026_real_last_online_update_ms', String(Date.now()));
 
     if (currentFilter === 'real') { buildRealView(); scrollToCurrentDateIn('real-view'); }
-    else if (currentFilter === 'rank') buildRankView();
+    else if (currentFilter === 'rank') { buildRankView(); scrollToRankTop(); }
     else if (currentFilter === 'daily') buildDailyView();
     else if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); scrollToCurrentDateIn('results-list'); }
     else if (currentFilter === 'real-table') buildRealTableView();
@@ -6958,7 +6986,7 @@ function clearRealScores() {
   realScores = {};
   saveRealScores();
   if (currentFilter === 'real') buildRealView();
-  else if (currentFilter === 'rank') buildRankView();
+  else if (currentFilter === 'rank') { buildRankView(); scrollToRankTop(); }
   else if (currentFilter === 'daily') buildDailyView();
   else buildMatchList();
   showToast('نتایج واقعی پاک شد');
@@ -6986,6 +7014,7 @@ function showRankTab() {
   hideAllViews();
   document.getElementById('rank-view').style.display = 'block';
   buildRankView();
+  scrollToRankTop();
   maybeAutoUpdateRealScoresOnline();
   maybeAutoUpdateRealTableOnline(true);
 }
