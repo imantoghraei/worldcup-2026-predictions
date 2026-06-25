@@ -198,6 +198,23 @@ button{cursor:pointer;font-family:inherit}
 .rank-move.up{border-color:rgba(39,174,96,.55);color:var(--green-light);background:rgba(26,122,63,.16)}
 .rank-move.down{border-color:rgba(231,76,60,.55);color:var(--red);background:rgba(231,76,60,.12)}
 .rank-move.same{color:var(--dim)}
+.evo-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.85rem .9rem;margin-bottom:.8rem;overflow:hidden}
+.evo-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.7rem;margin-bottom:.65rem}
+.evo-title{font-size:.9rem;font-weight:900;color:var(--gold)}
+.evo-sub{font-size:.68rem;color:var(--dim);line-height:1.7;margin-top:.2rem}
+.evo-chart-wrap{direction:ltr;overflow-x:auto;padding:.25rem 0 .1rem;scrollbar-width:thin}
+.evo-svg{display:block;width:100%;min-width:560px;height:auto}
+.evo-axis{stroke:rgba(122,158,138,.55);stroke-width:1}
+.evo-grid{stroke:rgba(122,158,138,.16);stroke-width:1}
+.evo-label{fill:var(--dim);font-size:11px;font-weight:700}
+.evo-line{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.evo-point{stroke:var(--bg);stroke-width:2}
+.evo-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.4rem;margin-top:.7rem}
+.evo-legend-item{display:flex;align-items:center;gap:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.42rem .5rem;min-width:0}
+.evo-dot{width:.65rem;height:.65rem;border-radius:50%;flex-shrink:0}
+.evo-name{font-size:.7rem;font-weight:900;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evo-meta{font-size:.62rem;color:var(--dim);margin-right:auto;white-space:nowrap}
+.evo-empty{text-align:center;color:var(--dim);padding:1.2rem .4rem;font-size:.78rem;line-height:1.8}
 .rank-badges{display:flex;gap:.32rem;flex-wrap:wrap;margin-top:.48rem}
 .fun-badge{display:inline-flex;align-items:center;gap:.22rem;border-radius:999px;border:1px solid rgba(240,165,0,.28);background:rgba(240,165,0,.10);color:var(--gold);font-size:.64rem;font-weight:900;padding:.18rem .5rem;line-height:1.35;font-family:inherit;cursor:pointer;position:relative;appearance:none;-webkit-appearance:none}
 .fun-badge.green{border-color:rgba(39,174,96,.35);background:rgba(26,122,63,.14);color:var(--green-light)}
@@ -5530,6 +5547,216 @@ function predictionForMatchItem(playerName, m) {
     : ((allPredictions[playerName] || {})[m.id]);
 }
 
+function emptyEvolutionStats() {
+  return { total: 0, exact: 0, gd: 0, winner: 0, zero: 0 };
+}
+
+function addEvolutionScore(stats, pts, isKo) {
+  if (pts === null || pts === undefined) return;
+  stats.total += pts;
+  if (isKo) {
+    if (pts === 8) stats.exact++;
+    else if (pts === 4) stats.gd++;
+    else stats.zero++;
+    return;
+  }
+  if (pts === 4) stats.exact++;
+  else if (pts === 2) stats.gd++;
+  else if (pts === 1) stats.winner++;
+  else stats.zero++;
+}
+
+function rankEvolutionRows(players, statsByName) {
+  return players.map(name => {
+    const stats = statsByName[name] || emptyEvolutionStats();
+    return { name, ...stats, netAcc: stats.exact - stats.zero };
+  }).sort((a, b) =>
+    b.total - a.total ||
+    b.netAcc - a.netAcc ||
+    b.exact - a.exact ||
+    b.gd - a.gd ||
+    playerDisplayName(a.name).localeCompare(playerDisplayName(b.name), 'fa')
+  );
+}
+
+function makeEvolutionSnapshot(label, key, players, statsByName) {
+  const rows = rankEvolutionRows(players, statsByName);
+  const ranks = {};
+  rows.forEach((row, i) => { ranks[row.name] = i + 1; });
+  const values = {};
+  players.forEach(name => { values[name] = (statsByName[name] || emptyEvolutionStats()).total; });
+  return { label, key, values, ranks };
+}
+
+function groupFinishDate(grp) {
+  const last = MATCHES
+    .filter(m => m.grp === grp)
+    .sort((a, b) => matchDateValue(b) - matchDateValue(a))[0];
+  return last ? last.date : null;
+}
+
+function finalGroupStageDate() {
+  const last = chronologicalMatches(MATCHES)[MATCHES.length - 1];
+  return last ? last.date : null;
+}
+
+function addEvolutionQualifierPoints(byDate, date, playerName, pts) {
+  if (!date || !pts) return;
+  if (!byDate[date]) byDate[date] = {};
+  byDate[date][playerName] = (byDate[date][playerName] || 0) + pts;
+}
+
+function qualifierPointsByFinishDate(players) {
+  const byDate = {};
+  const finalDate = finalGroupStageDate();
+  players.forEach(name => {
+    const q = calcQualifierPoints(name);
+    GROUP_LETTERS.forEach(grp => {
+      const detail = q.details && q.details[grp];
+      if (detail && detail.active) addEvolutionQualifierPoints(byDate, groupFinishDate(grp), name, detail.pts);
+    });
+    if (q.bestThirds && q.bestThirds.active) {
+      addEvolutionQualifierPoints(byDate, finalDate, name, q.bestThirds.pts);
+    }
+  });
+  return byDate;
+}
+
+function buildRankEvolutionData(players) {
+  const statsByName = {};
+  players.forEach(name => { statsByName[name] = emptyEvolutionStats(); });
+
+  const byDate = {};
+  scoredMatchItems().forEach(m => {
+    if (!byDate[m.date]) byDate[m.date] = [];
+    byDate[m.date].push(m);
+  });
+
+  const qualifierByDate = qualifierPointsByFinishDate(players);
+  const dates = [...new Set([...Object.keys(byDate), ...Object.keys(qualifierByDate)])]
+    .sort((a, b) => matchDateOnlyValue(a) - matchDateOnlyValue(b));
+
+  const snapshots = [];
+  dates.forEach(date => {
+    (byDate[date] || []).forEach(m => {
+      players.forEach(name => {
+        const pts = calcScore(predictionForMatchItem(name, m), m.real, m.kind === 'ko');
+        addEvolutionScore(statsByName[name], pts, m.kind === 'ko');
+      });
+    });
+
+    Object.entries(qualifierByDate[date] || {}).forEach(([name, pts]) => {
+      statsByName[name].total += pts;
+    });
+    snapshots.push(makeEvolutionSnapshot(faDate(date), date, players, statsByName));
+  });
+
+  return { snapshots, qualifierByDate };
+}
+
+function evolutionPlayerName(player) {
+  return player.name === 'Hamid' ? 'حمید' : player.faName;
+}
+
+function rankEvolutionColor(index) {
+  const colors = ['#f0a500','#27ae60','#3498db','#e74c3c','#9b59b6','#1abc9c','#ff8a80','#5dade2','#f7dc6f','#af7ac5'];
+  return colors[index % colors.length];
+}
+
+function renderRankEvolutionSvg(data, rankings) {
+  const snapshots = data.snapshots || [];
+  if (!snapshots.length) return '';
+
+  const width = 640, height = 290;
+  const left = 46, right = 18, top = 20, bottom = 56;
+  const plotW = width - left - right;
+  const plotH = height - top - bottom;
+  const allPointValues = snapshots.reduce((arr, s) => arr.concat(Object.values(s.values)), []);
+  const maxPoints = Math.max(1, ...allPointValues);
+  const tickStep = 20;
+  const yMax = Math.max(tickStep, Math.ceil(maxPoints / tickStep) * tickStep);
+  const x = i => snapshots.length === 1 ? left + plotW / 2 : left + (plotW * i / (snapshots.length - 1));
+  const y = v => top + ((yMax - v) / yMax) * plotH;
+  const ticks = [];
+  for (let t = 0; t <= yMax; t += tickStep) ticks.push(t);
+  const labelEvery = Math.max(1, Math.ceil(snapshots.length / 6));
+
+  const grid = ticks.map(t => {
+    const yy = y(t);
+    return `<line class="evo-grid" x1="${left}" y1="${yy}" x2="${width - right}" y2="${yy}"></line>
+      <text class="evo-label" x="${left - 8}" y="${yy + 4}" text-anchor="end">${t}</text>`;
+  }).join('');
+
+  const xLabels = snapshots.map((s, i) => {
+    if (i !== 0 && i !== snapshots.length - 1 && i % labelEvery !== 0) return '';
+    const xx = x(i);
+    return `<text class="evo-label" x="${xx}" y="${height - 24}" text-anchor="end" transform="rotate(-35 ${xx} ${height - 24})">${escapeHtml(s.label)}</text>`;
+  }).join('');
+
+  const lines = rankings.map((p, i) => {
+    const color = rankEvolutionColor(i);
+    const points = snapshots.map((s, idx) => `${x(idx).toFixed(1)},${y(s.values[p.name] || 0).toFixed(1)}`).join(' ');
+    const circles = snapshots.map((s, idx) => {
+      const value = s.values[p.name] || 0;
+      const rank = s.ranks[p.name] || '-';
+      const cx = x(idx).toFixed(1);
+      const cy = y(value).toFixed(1);
+      const title = `${evolutionPlayerName(p)}: ${value} امتیاز · رتبه ${rank} · ${s.label}`;
+      return `<circle class="evo-point" cx="${cx}" cy="${cy}" r="4" fill="${color}">
+        <title>${escapeHtml(title)}</title>
+      </circle>`;
+    }).join('');
+    return `<polyline class="evo-line" points="${points}" stroke="${color}"></polyline>${circles}`;
+  }).join('');
+
+  return `<svg class="evo-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="نمودار روند امتیازها">
+    ${grid}
+    <line class="evo-axis" x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}"></line>
+    <line class="evo-axis" x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}"></line>
+    <text class="evo-label" x="${left - 30}" y="${top + 12}" text-anchor="middle" transform="rotate(-90 ${left - 30} ${top + 12})">امتیاز</text>
+    ${xLabels}
+    ${lines}
+  </svg>`;
+}
+
+function buildRankEvolutionCard(rankings) {
+  const players = rankings.map(p => p.name);
+  const data = buildRankEvolutionData(players);
+  const card = document.createElement('div');
+  card.className = 'evo-card';
+
+  if (!data.snapshots.length) {
+    card.innerHTML = `<div class="evo-head">
+      <div>
+        <div class="evo-title">📈 مسیر امتیازها</div>
+        <div class="evo-sub">بعد از ثبت اولین نتیجه، روند روزانه امتیازها اینجا دیده می‌شود.</div>
+      </div>
+    </div>
+    <div class="evo-empty">هنوز داده‌ای برای رسم نمودار وجود ندارد.</div>`;
+    return card;
+  }
+
+  const latest = data.snapshots[data.snapshots.length - 1];
+  const legend = rankings.map((p, i) => {
+    const color = rankEvolutionColor(i);
+    return `<div class="evo-legend-item">
+      <span class="evo-dot" style="background:${color}"></span>
+      <span class="evo-name">${escapeHtml(evolutionPlayerName(p))}</span>
+      <span class="evo-meta">رتبه ${latest.ranks[p.name] || '-'} · ${latest.values[p.name] || 0}</span>
+    </div>`;
+  }).join('');
+
+  card.innerHTML = `<div class="evo-head">
+    <div>
+      <div class="evo-title">📈 مسیر امتیازها</div>
+      <div class="evo-sub">محور عمودی امتیاز تجمعی است و محور افقی روزهای بازی.</div>
+    </div>
+  </div>
+  <div class="evo-chart-wrap">${renderRankEvolutionSvg(data, rankings)}</div>
+  <div class="evo-legend">${legend}</div>`;
+  return card;
+}
+
 function matchTeamsFa(m) {
   if (m.kind === 'ko') {
     const t1 = resolveSlot(m.s1);
@@ -6760,7 +6987,7 @@ function showRankTab() {
   document.getElementById('rank-view').style.display = 'block';
   buildRankView();
   maybeAutoUpdateRealScoresOnline();
-  maybeAutoUpdateRealTableOnline();
+  maybeAutoUpdateRealTableOnline(true);
 }
 
 function showDailyTab() {
@@ -7254,6 +7481,8 @@ function buildRankView() {
       </div>`;
     container.appendChild(card);
   });
+
+  container.appendChild(buildRankEvolutionCard(rankings));
 }
 
 // ── جدول روزانه ──
