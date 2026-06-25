@@ -253,6 +253,8 @@ button{cursor:pointer;font-family:inherit}
 .rtab{padding:.35rem .8rem;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--dim);font-size:.75rem;font-weight:700;white-space:nowrap;cursor:pointer;transition:all .15s}
 .rtab.active{background:var(--green);color:#fff;border-color:var(--green-light)}
 .rtab.done{border-color:var(--gold);color:var(--gold)}
+.ko-warning{background:linear-gradient(135deg,rgba(240,165,0,.16),rgba(26,122,63,.10));border:1px solid rgba(240,165,0,.38);border-radius:12px;padding:.7rem .8rem;margin:0 0 .8rem;color:var(--text);font-size:.74rem;line-height:1.75;direction:rtl}
+.ko-warning strong{color:var(--gold);font-size:.82rem}
 .ko-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.85rem .9rem;margin-bottom:.55rem;transition:border-color .2s}
 .ko-card.done{border-color:var(--green)}
 .ko-city{font-size:.65rem;color:var(--dim);margin-top:.15rem}
@@ -4690,7 +4692,7 @@ button{cursor:pointer;font-family:inherit}
         <div class="rank-breakdown">
           <span>🎯 دقیق×۴: 0</span>
           <span>📐 تفاضل×۲: 0</span>
-          <span>✅ برنده×۱: 0</span>
+          <span>✅ برنده: 0</span>
           <span>🎟️ صعود×۲: 0 (0)</span>
           <span>❌ اشتباه: 0</span>
         </div>
@@ -5056,6 +5058,7 @@ function calcScore(pred, real, isKo = false) {
   if (isKo) {
     if (exact)  return 8;
     if (sameGD) return 4;
+    if (sameW)  return 2;
     return 0;
   }
   if (exact)  return 4;
@@ -5078,7 +5081,7 @@ function calcPlayerTotal(playerName) {
     const pts = calcScore(koPreds[m.id], koReal[m.id], true);
     if (pts === null) return;
     total += pts;
-    if (pts === 8) exact++; else if (pts === 4) gdPts++; else zeroPts++;
+    if (pts === 8) exact++; else if (pts === 4) gdPts++; else if (pts === 2) winnerPts++; else zeroPts++;
   });
   // امتیاز صعود به یک‌سی‌ودوم: ۲ امتیاز برای هر تیمِ درست
   const q = calcQualifierPoints(playerName);
@@ -5561,6 +5564,7 @@ function addEvolutionScore(stats, pts, isKo) {
   if (isKo) {
     if (pts === 8) stats.exact++;
     else if (pts === 4) stats.gd++;
+    else if (pts === 2) stats.winner++;
     else stats.zero++;
     return;
   }
@@ -6557,6 +6561,13 @@ function buildKnockoutView(roundOverride) {
   });
   container.appendChild(rtabs);
 
+  const warning = document.createElement('div');
+  warning.className = 'ko-warning';
+  warning.innerHTML = `<strong>⚠️ پیش‌بینی حذفی حساس‌تر است</strong><br>
+    امتیازها دو برابرند: نتیجه دقیق ۸، تفاضل گل ۴، و برنده درست ۲ امتیاز دارد؛ پس با دقت پیش‌بینی کنید.
+    اگر بازی با پنالتی تمام شود، نتیجه رسمی بازی مساوی حساب می‌شود و فقط کسانی که مساوی پیش‌بینی کرده‌اند امتیاز می‌گیرند.`;
+  container.appendChild(warning);
+
   const roundMatches = KO.filter(m => m.round === activeRound);
   if (!roundMatches.length) return;
 
@@ -7487,7 +7498,7 @@ function buildRankView() {
         <div class="rank-breakdown">
           <span>🎯 دقیق×۴: ${p.exact}</span>
           <span>📐 تفاضل×۲: ${p.gd}</span>
-          <span>✅ برنده×۱: ${p.winner}</span>
+          <span>✅ برنده: ${p.winner}</span>
           <span>🎟️ صعود×۲: ${p.qual||0} (${p.qualPts||0})</span>
           <span>❌ اشتباه: ${p.zero}</span>
         </div>
