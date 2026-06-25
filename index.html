@@ -6094,6 +6094,7 @@ function getUnlockedRounds() {
   return rounds;
 }
 function getPredictions(player) {
+  if (!player) return {};
   if (!allPredictions[player]) allPredictions[player] = {};
   return allPredictions[player];
 }
