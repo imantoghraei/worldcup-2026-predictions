@@ -1,5 +1,33 @@
 {
-  "updated": null,
-  "groups": {},
+  "updated": "2026-06-25T09:26:18.914Z",
+  "groups": {
+    "A": [
+      "Mexico",
+      "South Africa",
+      "Rep. of Korea",
+      "Czech Rep."
+    ],
+    "B": [
+      "Switzerland",
+      "Canada",
+      "Bosnia/Herzeg.",
+      "Qatar"
+    ],
+    "C": [
+      "Brazil",
+      "Morocco",
+      "Scotland",
+      "Haiti"
+    ],
+    "D": [
+      "USA"
+    ],
+    "E": [
+      "Germany"
+    ],
+    "J": [
+      "Argentina"
+    ]
+  },
   "bestThirds": []
 }
