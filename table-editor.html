@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ویرایشگر جدول واقعی جام جهانی ۲۰۲۶</title>
+<style>
+  :root{--bg:#0c1018;--card:#141b27;--card2:#1a2433;--gold:#e8b923;--green:#1f9d55;--text:#e8edf4;--dim:#7d8aa0;--border:#26314a;--red:#c0392b}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,system-ui,sans-serif;padding-bottom:7rem}
+  header{position:sticky;top:0;background:#0c1018ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:.8rem 1rem;z-index:10}
+  h1{font-size:1.05rem;margin:0 0 .3rem}
+  .hint{font-size:.72rem;color:var(--dim);line-height:1.65}
+  .content{padding:.6rem .8rem}
+  .gcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.75rem;margin-bottom:.65rem}
+  .ghead{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+  .gtitle{font-size:.88rem;font-weight:900;color:var(--gold)}
+  .gstat{font-size:.68rem;color:var(--dim)}
+  .rank-row{display:flex;align-items:center;gap:.45rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.45rem .5rem;margin-bottom:.35rem}
+  .rank-no{width:1.4rem;color:var(--gold);font-weight:900;text-align:center}
+  .team-name{flex:1;font-size:.82rem;font-weight:800}
+  .mini{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:7px;padding:.25rem .45rem;font-size:.72rem;font-weight:800;cursor:pointer}
+  .mini.red{color:var(--red)}
+  .chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}
+  .chip{border:1px solid var(--border);background:var(--card2);color:var(--text);border-radius:999px;padding:.35rem .65rem;font-size:.75rem;font-weight:800;cursor:pointer}
+  .chip:disabled{opacity:.45;cursor:not-allowed}
+  .actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.55rem}
+  .note{font-size:.72rem;color:var(--dim);line-height:1.6;margin-top:.45rem}
+  .third-box{border-color:var(--gold)}
+  textarea{width:100%;height:150px;background:#06090f;color:#9fe0b0;border:1px solid var(--border);border-radius:10px;padding:.6rem;font-family:monospace;font-size:.75rem;margin-top:.6rem;display:none;direction:ltr;text-align:left}
+  footer{position:fixed;bottom:0;left:0;right:0;background:#0c1018f5;border-top:1px solid var(--border);padding:.7rem .9rem;display:flex;gap:.5rem}
+  .fbtn{flex:1;border:none;border-radius:10px;padding:.8rem;font-size:.82rem;font-weight:900;cursor:pointer}
+  .fbtn.primary{background:var(--gold);color:#1a1300}
+  .fbtn.sec{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+  .toast{position:fixed;bottom:5.5rem;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:.6rem 1.2rem;border-radius:20px;font-size:.8rem;opacity:0;transition:.3s;pointer-events:none;z-index:20;white-space:nowrap}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 ویرایشگر جدول واقعی</h1>
+  <div class="hint">برای هر گروه، تیم‌ها را به ترتیب رتبه اضافه کنید. می‌توانید فقط رتبه‌های اول و دوم را ثبت کنید و بعداً رتبه‌های سوم و چهارم را اضافه کنید. وقتی تیم‌های سوم مشخص شدند، ۸ تیم سوم برتر را هم انتخاب کنید و خروجی را در <b>table.json</b> قرار دهید.</div>
+</header>
+<div class="content" id="content"></div>
+<textarea id="out" readonly></textarea>
+<footer>
+  <button class="fbtn primary" onclick="genJSON()">🧩 تولید JSON</button>
+  <button class="fbtn sec" onclick="copyJSON()">📋 کپی</button>
+  <button class="fbtn sec" onclick="loadExisting()">📥 بارگذاری قبلی</button>
+</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+const GROUPS = {
+  A:["Mexico","South Africa","Rep. of Korea","Czech Rep."],
+  B:["Canada","Bosnia/Herzeg.","Qatar","Switzerland"],
+  C:["Brazil","Morocco","Haiti","Scotland"],
+  D:["USA","Paraguay","Australia","Turkey"],
+  E:["Germany","Curaçao","Ivory Coast","Ecuador"],
+  F:["Netherlands","Japan","Sweden","Tunisia"],
+  G:["Belgium","Egypt","IR Iran","New Zealand"],
+  H:["Spain","Cape Verde","Saudi Arabia","Uruguay"],
+  I:["France","Senegal","Iraq","Norway"],
+  J:["Argentina","Algeria","Austria","Jordan"],
+  K:["Portugal","DR Congo","Uzbekistan","Colombia"],
+  L:["England","Croatia","Ghana","Panama"],
+};
+const FA_TEAMS = {
+  "Mexico":"مکزیک","South Africa":"آفریقای جنوبی","Rep. of Korea":"کره جنوبی","Czech Rep.":"جمهوری چک",
+  "Canada":"کانادا","Bosnia/Herzeg.":"بوسنی و هرزگوین","Qatar":"قطر","Switzerland":"سوئیس",
+  "Brazil":"برزیل","Morocco":"مراکش","Haiti":"هائیتی","Scotland":"اسکاتلند",
+  "USA":"آمریکا","Paraguay":"پاراگوئه","Australia":"استرالیا","Turkey":"ترکیه",
+  "Germany":"آلمان","Curaçao":"کوراسائو","Ivory Coast":"ساحل عاج","Ecuador":"اکوادور",
+  "Netherlands":"هلند","Japan":"ژاپن","Sweden":"سوئد","Tunisia":"تونس",
+  "Belgium":"بلژیک","Egypt":"مصر","IR Iran":"ایران","New Zealand":"نیوزیلند",
+  "Spain":"اسپانیا","Cape Verde":"کیپ‌ورد","Saudi Arabia":"عربستان سعودی","Uruguay":"اروگوئه",
+  "France":"فرانسه","Senegal":"سنگال","Iraq":"عراق","Norway":"نروژ",
+  "Argentina":"آرژانتین","Algeria":"الجزایر","Austria":"اتریش","Jordan":"اردن",
+  "Portugal":"پرتغال","DR Congo":"کنگو دموکراتیک","Uzbekistan":"ازبکستان","Colombia":"کلمبیا",
+  "England":"انگلستان","Croatia":"کرواسی","Ghana":"غنا","Panama":"پاناما",
+};
+const FLAGS = {
+  "Mexico":"🇲🇽","South Africa":"🇿🇦","Rep. of Korea":"🇰🇷","Czech Rep.":"🇨🇿",
+  "Canada":"🇨🇦","Bosnia/Herzeg.":"🇧🇦","Qatar":"🇶🇦","Switzerland":"🇨🇭",
+  "Brazil":"🇧🇷","Morocco":"🇲🇦","Haiti":"🇭🇹","Scotland":"🏴",
+  "USA":"🇺🇸","Paraguay":"🇵🇾","Australia":"🇦🇺","Turkey":"🇹🇷",
+  "Germany":"🇩🇪","Curaçao":"🇨🇼","Ivory Coast":"🇨🇮","Ecuador":"🇪🇨",
+  "Netherlands":"🇳🇱","Japan":"🇯🇵","Sweden":"🇸🇪","Tunisia":"🇹🇳",
+  "Belgium":"🇧🇪","Egypt":"🇪🇬","IR Iran":"🇮🇷","New Zealand":"🇳🇿",
+  "Spain":"🇪🇸","Cape Verde":"🇨🇻","Saudi Arabia":"🇸🇦","Uruguay":"🇺🇾",
+  "France":"🇫🇷","Senegal":"🇸🇳","Iraq":"🇮🇶","Norway":"🇳🇴",
+  "Argentina":"🇦🇷","Algeria":"🇩🇿","Austria":"🇦🇹","Jordan":"🇯🇴",
+  "Portugal":"🇵🇹","DR Congo":"🇨🇩","Uzbekistan":"🇺🇿","Colombia":"🇨🇴",
+  "England":"🏴","Croatia":"🇭🇷","Ghana":"🇬🇭","Panama":"🇵🇦",
+};
+const EXISTING_URL = 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/table.json';
+
+let standings = {};
+let bestThirds = [];
+
+function fa(team){return FA_TEAMS[team] || team;}
+function flag(team){return FLAGS[team] || '🏳';}
+function groupOf(team){
+  const hit = Object.entries(GROUPS).find(([,teams]) => teams.includes(team));
+  return hit ? hit[0] : '?';
+}
+function thirdCandidates(){return Object.values(standings).map(arr => arr && arr[2]).filter(Boolean);}
+
+function render(){
+  const c = document.getElementById('content');
+  c.innerHTML = '';
+  Object.keys(GROUPS).forEach(grp => c.appendChild(groupCard(grp)));
+  c.appendChild(thirdCard());
+}
+
+function groupCard(grp){
+  const selected = standings[grp] || [];
+  const available = GROUPS[grp].filter(t => !selected.includes(t));
+  const d = document.createElement('div');
+  d.className = 'gcard';
+  d.innerHTML = `
+    <div class="ghead"><div class="gtitle">گروه ${grp}</div><div class="gstat">${selected.length}/4 رتبه ثبت شده</div></div>
+    <div>${selected.length ? selected.map((team, idx) => rankRow(grp, team, idx)).join('') : '<div class="note">هنوز تیمی برای این گروه انتخاب نشده است.</div>'}</div>
+    <div class="chips">${available.map(team => `<button class="chip" onclick="addTeam('${grp}','${team}')">${flag(team)} ${fa(team)}</button>`).join('')}</div>
+    <div class="actions">
+      <button class="mini" onclick="fillGroup('${grp}')">پر کردن همه</button>
+      <button class="mini red" onclick="clearGroup('${grp}')">پاک کردن گروه</button>
+    </div>
+    <div class="note">رتبه‌های اول و دوم همین گروه بلافاصله در سایت امتیاز صعود می‌دهند.</div>`;
+  return d;
+}
+
+function rankRow(grp, team, idx){
+  return `<div class="rank-row">
+    <div class="rank-no">${idx + 1}</div>
+    <div class="team-name">${flag(team)} ${fa(team)}</div>
+    <button class="mini" onclick="moveTeam('${grp}',${idx},-1)" ${idx === 0 ? 'disabled' : ''}>بالا</button>
+    <button class="mini" onclick="moveTeam('${grp}',${idx},1)" ${idx === (standings[grp] || []).length - 1 ? 'disabled' : ''}>پایین</button>
+    <button class="mini red" onclick="removeTeam('${grp}',${idx})">حذف</button>
+  </div>`;
+}
+
+function thirdCard(){
+  const candidates = thirdCandidates();
+  bestThirds = bestThirds.filter(t => candidates.includes(t)).slice(0, 8);
+  const available = candidates.filter(t => !bestThirds.includes(t));
+  const d = document.createElement('div');
+  d.className = 'gcard third-box';
+  d.innerHTML = `
+    <div class="ghead"><div class="gtitle">🏅 ۸ تیم سوم برتر</div><div class="gstat">${bestThirds.length}/8 انتخاب شده</div></div>
+    <div>${bestThirds.length ? bestThirds.map((team, idx) => thirdRow(team, idx)).join('') : '<div class="note">بعد از وارد کردن رتبه سوم گروه‌ها، تیم‌های سوم اینجا قابل انتخاب می‌شوند.</div>'}</div>
+    <div class="chips">${available.map(team => `<button class="chip" onclick="addThird('${team}')" ${bestThirds.length >= 8 ? 'disabled' : ''}>${flag(team)} ${fa(team)} · گروه ${groupOf(team)}</button>`).join('')}</div>
+    <div class="note">این بخش فقط وقتی در سایت امتیاز می‌دهد که هر ۸ تیم سوم برتر را انتخاب کرده باشید.</div>`;
+  return d;
+}
+
+function thirdRow(team, idx){
+  return `<div class="rank-row">
+    <div class="rank-no">${idx + 1}</div>
+    <div class="team-name">${flag(team)} ${fa(team)} <span style="color:var(--dim);font-size:.72rem">گروه ${groupOf(team)}</span></div>
+    <button class="mini" onclick="moveThird(${idx},-1)" ${idx === 0 ? 'disabled' : ''}>بالا</button>
+    <button class="mini" onclick="moveThird(${idx},1)" ${idx === bestThirds.length - 1 ? 'disabled' : ''}>پایین</button>
+    <button class="mini red" onclick="removeThird(${idx})">حذف</button>
+  </div>`;
+}
+
+function addTeam(grp, team){standings[grp] = standings[grp] || []; if(!standings[grp].includes(team)) standings[grp].push(team); render();}
+function removeTeam(grp, idx){(standings[grp] || []).splice(idx, 1); if(!standings[grp].length) delete standings[grp]; render();}
+function moveTeam(grp, idx, delta){const arr = standings[grp] || []; const j = idx + delta; if(j < 0 || j >= arr.length) return; [arr[idx], arr[j]] = [arr[j], arr[idx]]; render();}
+function fillGroup(grp){standings[grp] = [...GROUPS[grp]]; render();}
+function clearGroup(grp){delete standings[grp]; render();}
+function addThird(team){if(bestThirds.length < 8 && !bestThirds.includes(team)) bestThirds.push(team); render();}
+function removeThird(idx){bestThirds.splice(idx, 1); render();}
+function moveThird(idx, delta){const j = idx + delta; if(j < 0 || j >= bestThirds.length) return; [bestThirds[idx], bestThirds[j]] = [bestThirds[j], bestThirds[idx]]; render();}
+
+function genJSON(){
+  const groups = {};
+  Object.keys(GROUPS).forEach(grp => {
+    if (standings[grp] && standings[grp].length) groups[grp] = standings[grp];
+  });
+  const json = JSON.stringify({updated:new Date().toISOString(), groups, bestThirds}, null, 2);
+  const ta = document.getElementById('out');
+  ta.style.display = 'block';
+  ta.value = json;
+  ta.scrollIntoView({behavior:'smooth',block:'center'});
+  toast(Object.keys(groups).length + ' گروه در JSON قرار گرفت');
+}
+
+function copyJSON(){
+  const ta = document.getElementById('out');
+  if(!ta.value) genJSON();
+  ta.style.display = 'block';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value).then(() => toast('کپی شد!'), () => {
+      ta.select(); document.execCommand('copy'); toast('کپی شد!');
+    });
+  } else {
+    ta.select(); document.execCommand('copy'); toast('کپی شد!');
+  }
+}
+
+function sanitizeLoaded(data){
+  standings = {};
+  const groups = data && data.groups && typeof data.groups === 'object' ? data.groups : {};
+  Object.keys(GROUPS).forEach(grp => {
+    const seen = new Set();
+    const arr = Array.isArray(groups[grp]) ? groups[grp].filter(t => GROUPS[grp].includes(t) && !seen.has(t) && seen.add(t)).slice(0, 4) : [];
+    if(arr.length) standings[grp] = arr;
+  });
+  const candidates = thirdCandidates();
+  const seenThird = new Set();
+  bestThirds = Array.isArray(data && data.bestThirds)
+    ? data.bestThirds.filter(t => candidates.includes(t) && !seenThird.has(t) && seenThird.add(t)).slice(0, 8)
+    : [];
+}
+
+async function loadExisting(){
+  try{
+    const r = await fetch(EXISTING_URL + '?t=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) throw 0;
+    const data = await r.json();
+    sanitizeLoaded(data || {});
+    render();
+    toast('table.json قبلی بارگذاری شد');
+  }catch(e){
+    toast('بارگذاری ناموفق (آدرس را بررسی کنید)');
+  }
+}
+
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2200);}
+render();
+</script>
+</body>
+</html>

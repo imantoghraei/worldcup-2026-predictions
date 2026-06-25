@@ -41,7 +41,7 @@ button{cursor:pointer;font-family:inherit}
 .progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:3px;transition:width .4s}
 .progress-txt{font-size:.72rem;color:var(--dim);margin-top:.3rem;text-align:right}
 .content{padding:.5rem .8rem}
-.date-sep{display:flex;align-items:center;gap:.7rem;margin:1rem 0 .6rem;padding:0 .2rem}
+.date-sep{display:flex;align-items:center;gap:.7rem;margin:1rem 0 .6rem;padding:0 .2rem;scroll-margin-top:130px}
 .date-sep span{font-size:.75rem;font-weight:800;color:var(--gold);white-space:nowrap}
 .date-sep::before{content:'';flex:1;height:1px;background:var(--border)}
 
@@ -165,12 +165,20 @@ button{cursor:pointer;font-family:inherit}
 .ko-note{font-size:.65rem;color:var(--dim);text-align:center;margin-top:.2rem;font-style:italic}
 
 /* ── ورود نتایج واقعی ── */
-#real-view{padding:.5rem .8rem}
+#real-view,#real-table-view{padding:.5rem .8rem}
 .real-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.85rem .9rem;margin-bottom:.55rem;transition:border-color .2s}
 .real-card.recorded{border-color:var(--gold)}
 .real-toggle{background:var(--card2);border:1.5px solid var(--border);color:var(--dim);padding:.3rem .7rem;border-radius:8px;font-size:.72rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;margin-right:auto}
 .real-toggle.on{background:rgba(240,165,0,.2);border-color:var(--gold);color:var(--gold)}
 .real-pending{color:var(--dim);font-size:.8rem;padding:.5rem 0;direction:rtl}
+.real-table-note{background:rgba(240,165,0,.08);border:1px dashed rgba(240,165,0,.35);border-radius:12px;padding:.7rem .85rem;margin-bottom:.75rem;font-size:.75rem;color:var(--dim);line-height:1.75}
+.qual-grid{display:grid;grid-template-columns:1fr;gap:.35rem;margin-top:.6rem}
+.qual-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.45rem .6rem;font-size:.72rem}
+.qual-name{font-weight:800;color:var(--text);white-space:nowrap}
+.qual-detail{color:var(--dim);line-height:1.55;text-align:right;flex:1}
+.qual-pts{font-weight:900;color:var(--gold);white-space:nowrap}
+.qual-empty{color:var(--dim);font-size:.75rem;text-align:center;padding:.8rem .4rem;line-height:1.7}
+.table-link{color:var(--gold);font-weight:800;text-decoration:none}
 
 /* ── جدول امتیازات ── */
 #rank-view,#daily-view{padding:.5rem .8rem}
@@ -326,6 +334,7 @@ button{cursor:pointer;font-family:inherit}
   <div class="nav-tabs" id="view-tabs" style="display:none">
     <button class="tab-btn active" id="tab-real" onclick="showRealTab()">نتایج واقعی</button>
     <button class="tab-btn" id="tab-compare" onclick="showResults()">مقایسه</button>
+    <button class="tab-btn" id="tab-real-table" onclick="showRealTableTab()">جدول واقعی</button>
     <button class="tab-btn" id="tab-rank" onclick="showRankTab()">جدول پیش‌بینی‌گران</button>
     <button class="tab-btn" id="tab-daily" onclick="showDailyTab()">جدول روزانه</button>
     <button class="tab-btn" id="tab-groups-v" onclick="showGroupsTab()">گروه‌ها</button>
@@ -4683,6 +4692,7 @@ button{cursor:pointer;font-family:inherit}
         <div class="rank-pts-lbl">امتیاز</div>
       </div></div></div>
   <div id="daily-view" style="display:none"></div>
+  <div id="real-table-view" style="display:none"></div>
 
   <!-- ── نمای مقایسه (inline در #main) ── -->
   <div id="compare-view" style="display:none;padding:.5rem .8rem 80px">
@@ -4915,6 +4925,7 @@ let appMode = null; // 'predict' | 'view'
 let activeResultsPlayers = null; // declared early to avoid temporal-dead-zone errors during startup
 let allPredictions = {};
 let realScores = {};
+let realTable = { groups: {}, bestThirds: [] };
 let koPredictions = {};   // { playerName: { matchId: [s1,s2] } }
 let koReal = {};          // { matchId: [s1,s2] }
 let currentFilter = 'all';
@@ -4958,6 +4969,11 @@ const ONLINE_PREDICTIONS_SOURCE = {
   url: 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/predictions.json'
 };
 
+const ONLINE_TABLE_SOURCE = {
+  name: 'جدول واقعی گیت‌هاب',
+  url: 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/table.json'
+};
+
 // پاک‌سازی داده‌های خراب از حافظه‌ی مرورگر تا رندر خراب نشود
 function sanitizePreds(obj) {
   const clean = {};
@@ -4987,6 +5003,7 @@ function loadData() {
   store.remove('wc2026_fa_kr');
   realScores = {};
   koReal = {};
+  realTable = { groups: {}, bestThirds: [] };
 
   // اگر فایل HTML داده‌ی baked دارد، آن را با داده‌ی مرورگر «ادغام» کن
   // (به‌جای نادیده‌گرفتن یکی) تا با تعویض بازیکن هیچ داده‌ای حذف نشود.
@@ -5056,7 +5073,7 @@ function calcPlayerTotal(playerName) {
   // امتیاز صعود به یک‌سی‌ودوم: ۲ امتیاز برای هر تیمِ درست
   const q = calcQualifierPoints(playerName);
   total += q.pts;
-  return { total, exact, gd: gdPts, winner: winnerPts, zero: zeroPts, qual: q.correct, qualPts: q.pts };
+  return { total, exact, gd: gdPts, winner: winnerPts, zero: zeroPts, netAcc: exact - zeroPts, qual: q.correct, qualPts: q.pts };
 }
 
 // ── نشان‌ها، درام جدول، و خلاصه روز ──
@@ -5092,6 +5109,106 @@ function playerDisplayName(name) {
 
 function teamFa(name) {
   return FA_TEAMS[name] || name;
+}
+
+const GROUP_LETTERS = 'ABCDEFGHIJKL'.split('');
+
+function groupTeamsMap() {
+  const map = {};
+  GROUP_LETTERS.forEach(grp => { map[grp] = []; });
+  chronologicalMatches(MATCHES).forEach(m => {
+    [m.t1, m.t2].forEach(team => {
+      if (!map[m.grp].includes(team)) map[m.grp].push(team);
+    });
+  });
+  return map;
+}
+
+function teamGroupMap() {
+  const out = {};
+  Object.entries(groupTeamsMap()).forEach(([grp, teams]) => {
+    teams.forEach(team => { out[team] = grp; });
+  });
+  return out;
+}
+
+function normalizeTableTeam(team) {
+  if (!team) return null;
+  const allTeams = Object.values(groupTeamsMap()).flat();
+  const exact = allTeams.find(t => t === team);
+  if (exact) return exact;
+  const key = canonicalTeamKey(team);
+  return allTeams.find(t => canonicalTeamKey(t) === key) || null;
+}
+
+function sanitizeRealTable(data) {
+  const clean = { groups: {}, bestThirds: [] };
+  const sourceGroups = data && data.groups && typeof data.groups === 'object' ? data.groups : {};
+  const validGroups = groupTeamsMap();
+
+  GROUP_LETTERS.forEach(grp => {
+    const raw = Array.isArray(sourceGroups[grp]) ? sourceGroups[grp] : [];
+    const seen = new Set();
+    const teams = raw
+      .map(normalizeTableTeam)
+      .filter(team => team && validGroups[grp].includes(team) && !seen.has(team) && seen.add(team))
+      .slice(0, 4);
+    if (teams.length) clean.groups[grp] = teams;
+  });
+
+  const seenThirds = new Set();
+  const rawThirds = Array.isArray(data && data.bestThirds) ? data.bestThirds : [];
+  rawThirds.forEach(team => {
+    const normalized = normalizeTableTeam(team);
+    if (normalized && !seenThirds.has(normalized)) {
+      clean.bestThirds.push(normalized);
+      seenThirds.add(normalized);
+    }
+  });
+  clean.bestThirds = clean.bestThirds.slice(0, 8);
+  clean.updated = data && data.updated ? data.updated : null;
+  return clean;
+}
+
+function realTableGroupOrder(grp) {
+  return (realTable.groups && Array.isArray(realTable.groups[grp])) ? realTable.groups[grp] : [];
+}
+
+function realTableTopTwo(grp) {
+  const order = realTableGroupOrder(grp);
+  return order.length >= 2 ? order.slice(0, 2) : [];
+}
+
+function realTableThirdTeam(grp) {
+  const order = realTableGroupOrder(grp);
+  return order.length >= 3 ? order[2] : null;
+}
+
+function realTableTeamPosition(team) {
+  for (const grp of GROUP_LETTERS) {
+    const idx = realTableGroupOrder(grp).indexOf(team);
+    if (idx !== -1) return { grp, pos: idx };
+  }
+  return null;
+}
+
+function realBestThirdTeams() {
+  return (realTable.bestThirds || []).filter(team => {
+    const info = realTableTeamPosition(team);
+    return info && info.pos === 2;
+  }).slice(0, 8);
+}
+
+function realBestThirdsComplete() {
+  return realBestThirdTeams().length >= 8;
+}
+
+function realTableGroupsWithTopTwo() {
+  return GROUP_LETTERS.filter(grp => realTableTopTwo(grp).length >= 2);
+}
+
+function realTableCompleteForKnockout() {
+  return realTableGroupsWithTopTwo().length === GROUP_LETTERS.length && realBestThirdsComplete();
 }
 
 function predictionProfile(playerName) {
@@ -5133,31 +5250,74 @@ function predictionProfile(playerName) {
   };
 }
 
-function buildPredictionBadges(playerName, totals) {
-  const p = predictionProfile(playerName);
+function badgeLeaderSet(rows, valueFn, options = {}) {
+  const candidates = rows.filter(r => !options.filter || options.filter(r));
+  if (!candidates.length) return { value: null, names: new Set() };
+
+  const values = candidates.map(r => Number(valueFn(r))).filter(Number.isFinite);
+  if (!values.length) return { value: null, names: new Set() };
+
+  const value = options.minimize ? Math.min(...values) : Math.max(...values);
+  if (options.min !== undefined && value < options.min) return { value: null, names: new Set() };
+  if (options.max !== undefined && value > options.max) return { value: null, names: new Set() };
+
+  const names = new Set(candidates.filter(r => Number(valueFn(r)) === value).map(r => r.name));
+  return { value, names };
+}
+
+function buildBadgeLeaders(rankings) {
+  const rows = rankings.map(r => ({ ...r, profile: r.profile || predictionProfile(r.name) }));
+  return {
+    complete: badgeLeaderSet(rows, r => r.profile.groupCount, { min: MATCHES.length }),
+    exact: badgeLeaderSet(rows, r => r.exact, { min: 1 }),
+    gd: badgeLeaderSet(rows, r => r.gd, { min: 1 }),
+    winner: badgeLeaderSet(rows, r => r.winner, { min: 1 }),
+    qual: badgeLeaderSet(rows, r => r.qual || 0, { min: 1 }),
+    ko: badgeLeaderSet(rows, r => r.profile.koCount, { min: 1 }),
+    draws: badgeLeaderSet(rows, r => r.profile.draws, { min: 2, filter: r => r.profile.groupCount >= 20 }),
+    antiDraw: badgeLeaderSet(rows, r => r.profile.draws, { minimize: true, max: 3, filter: r => r.profile.groupCount >= 40 }),
+    offense: badgeLeaderSet(rows, r => Number(r.profile.avgGoals.toFixed(3)), { min: 3.1, filter: r => r.profile.groupCount >= 20 }),
+    defense: badgeLeaderSet(rows, r => Number(r.profile.avgGoals.toFixed(3)), { minimize: true, max: 1.8, filter: r => r.profile.groupCount >= 20 }),
+    highScores: badgeLeaderSet(rows, r => r.profile.highScores, { min: 15, filter: r => r.profile.groupCount >= 20 }),
+    cleanSheets: badgeLeaderSet(rows, r => r.profile.cleanSheets, {
+      min: 38,
+      filter: r => r.profile.groupCount >= 60 && r.profile.cleanSheets / r.profile.groupCount >= .55
+    }),
+    favoriteTeam: badgeLeaderSet(rows, r => r.profile.favoriteTeam ? r.profile.favoriteTeam.count : 0, {
+      min: 8,
+      filter: r => !!r.profile.favoriteTeam
+    })
+  };
+}
+
+function isBadgeLeader(leaders, key, playerName) {
+  return !!(leaders && leaders[key] && leaders[key].names && leaders[key].names.has(playerName));
+}
+
+function buildPredictionBadges(playerName, totals, leaders) {
+  const p = totals.profile || predictionProfile(playerName);
   const badges = [];
   const add = (icon, title, cls, desc) => badges.push({icon, title, cls, desc});
 
-  if (p.groupCount >= MATCHES.length) add('✅', 'تکمیل‌گر', 'green', 'همه ۷۲ بازی گروهی را پیش‌بینی کرده');
-  if (totals.exact >= 3) add('🎯', 'جادوگر نتیجه دقیق', 'hot', `${totals.exact} نتیجه دقیق`);
-  if (totals.gd >= 5) add('📐', 'استاد تفاضل گل', 'blue', `${totals.gd} بار تفاضل گل درست`);
-  if (totals.winner >= 10) add('✅', 'شکارچی برنده', 'green', `${totals.winner} برنده درست`);
-  if (totals.qual >= 24) add('🎟️', 'پیش‌گوی صعود', 'hot', `${totals.qual} تیم صعودکننده درست`);
-  if (p.koCount >= 8) add('🏆', 'حذفی‌باز', 'hot', `${p.koCount} بازی حذفی پیش‌بینی شده`);
-  if (p.groupCount >= 20 && p.drawRate >= .22) add('🤝', 'عاشق تساوی', 'blue', `${p.draws} تساوی در پیش‌بینی‌ها`);
-  if (p.groupCount >= 40 && p.draws <= 3) add('⚔️', 'ضد تساوی', 'red', 'تقریباً هیچ بازی را مساوی ندیده');
-  if (p.groupCount >= 20 && p.avgGoals >= 3.1) add('🔥', 'فوتبال هجومی', 'red', `میانگین ${p.avgGoals.toFixed(1)} گل`);
-  if (p.groupCount >= 20 && p.avgGoals <= 1.8) add('🧱', 'دیوار دفاعی', 'blue', `میانگین ${p.avgGoals.toFixed(1)} گل`);
-  if (p.highScores >= 15 || p.maxGoals >= 7) add('🎲', 'ریسک‌پذیر', 'red', 'نتایج پرگل زیاد پیش‌بینی کرده');
-  if (p.groupCount >= 60 && p.cleanSheets >= 38 && p.cleanSheets / p.groupCount >= .55) add('🧤', 'دروازه‌بسته‌بین', 'green', `${p.cleanSheets} بازی از ${p.groupCount} پیش‌بینی‌اش کلین‌شیت داشته`);
-  if (p.favoriteTeam && p.favoriteTeam.count >= 8) add('❤️', `هوادار ${teamFa(p.favoriteTeam.team)}`, 'hot', `${p.favoriteTeam.count} برد برای این تیم`);
-  if (!badges.length && p.groupCount > 0) add('✨', 'شروع طوفانی', 'dim', 'با چند پیش‌بینی اول وارد بازی شده');
+  if (isBadgeLeader(leaders, 'complete', playerName)) add('✅', 'تکمیل‌گر', 'green', 'همه ۷۲ بازی گروهی را پیش‌بینی کرده');
+  if (isBadgeLeader(leaders, 'exact', playerName)) add('🎯', 'جادوگر نتیجه دقیق', 'hot', `${totals.exact} نتیجه دقیق؛ بهترین آمار این بخش`);
+  if (isBadgeLeader(leaders, 'gd', playerName)) add('📐', 'استاد تفاضل گل', 'blue', `${totals.gd} بار تفاضل گل درست؛ صدر این معیار`);
+  if (isBadgeLeader(leaders, 'winner', playerName)) add('✅', 'شکارچی برنده', 'green', `${totals.winner} برنده درست؛ بیشترین بین بازیکنان`);
+  if (isBadgeLeader(leaders, 'qual', playerName)) add('🎟️', 'پیش‌گوی صعود', 'hot', `${totals.qual || 0} تیم صعودکننده درست؛ بهترین آمار صعود`);
+  if (isBadgeLeader(leaders, 'ko', playerName)) add('🏆', 'حذفی‌باز', 'hot', `${p.koCount} بازی حذفی پیش‌بینی شده؛ بیشترین تعداد`);
+  if (isBadgeLeader(leaders, 'draws', playerName)) add('🤝', 'عاشق تساوی', 'blue', `${p.draws} تساوی در پیش‌بینی‌ها؛ بیشترین بین بازیکنان`);
+  if (isBadgeLeader(leaders, 'antiDraw', playerName)) add('⚔️', 'ضد تساوی', 'red', `${p.draws} تساوی در ${p.groupCount} پیش‌بینی؛ کمترین بین بازیکنان پرکار`);
+  if (isBadgeLeader(leaders, 'offense', playerName)) add('🔥', 'فوتبال هجومی', 'red', `میانگین ${p.avgGoals.toFixed(1)} گل؛ هجومی‌ترین نگاه`);
+  if (isBadgeLeader(leaders, 'defense', playerName)) add('🧱', 'دیوار دفاعی', 'blue', `میانگین ${p.avgGoals.toFixed(1)} گل؛ محتاط‌ترین نگاه`);
+  if (isBadgeLeader(leaders, 'highScores', playerName)) add('🎲', 'ریسک‌پذیر', 'red', `${p.highScores} بازی ۴ گل یا بیشتر؛ بالاترین عدد`);
+  if (isBadgeLeader(leaders, 'cleanSheets', playerName)) add('🧤', 'دروازه‌بسته‌بین', 'green', `${p.cleanSheets} بازی از ${p.groupCount} پیش‌بینی‌اش کلین‌شیت داشته؛ سخت‌گیرانه‌ترین دفاع`);
+  if (isBadgeLeader(leaders, 'favoriteTeam', playerName) && p.favoriteTeam) add('❤️', `هوادار ${teamFa(p.favoriteTeam.team)}`, 'hot', `${p.favoriteTeam.count} برد برای این تیم؛ قوی‌ترین علاقه در پیش‌بینی‌ها`);
 
   return badges.slice(0, 5);
 }
 
-function renderPredictionBadges(playerName, totals) {
-  const badges = buildPredictionBadges(playerName, totals);
+function renderPredictionBadges(playerName, totals, leaders) {
+  const badges = buildPredictionBadges(playerName, totals, leaders);
   if (!badges.length) return '';
   return `<div class="rank-badges">${
     badges.map(b => `<button type="button" class="fun-badge ${escapeHtml(b.cls || '')}" onclick="showBadgeTip(event)" aria-label="${escapeHtml((b.title || '') + ': ' + (b.desc || b.title))}"><span>${b.icon}</span>${escapeHtml(b.title)}<span class="badge-tip" role="tooltip">${escapeHtml(b.desc || b.title)}</span></button>`).join('')
@@ -5299,6 +5459,38 @@ function matchDateValue(m) {
 
 function chronologicalMatches(matches) {
   return [...matches].sort((a, b) => matchDateValue(a) - matchDateValue(b) || a.id - b.id);
+}
+
+function matchDateOnlyValue(dateKey) {
+  const parts = String(dateKey || '').split(' ');
+  const monthMap = {Jun:5, Jul:6};
+  const month = monthMap[parts[1]] !== undefined ? monthMap[parts[1]] : 0;
+  const day = Number(parts[2]) || 1;
+  return Date.UTC(2026, month, day);
+}
+
+function todayMatchDateKey() {
+  const now = new Date();
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${days[now.getDay()]} ${months[now.getMonth()]} ${now.getDate()}`;
+}
+
+function scrollToCurrentDateIn(containerId) {
+  setTimeout(() => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const seps = Array.from(container.querySelectorAll('.date-sep[data-date]'));
+    if (!seps.length) return;
+
+    const today = todayMatchDateKey();
+    let target = seps.find(el => el.dataset.date === today);
+    if (!target) {
+      const todayValue = matchDateOnlyValue(today);
+      target = seps.find(el => matchDateOnlyValue(el.dataset.date) >= todayValue) || seps[seps.length - 1];
+    }
+    if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
 }
 
 function allMatchItems() {
@@ -5571,17 +5763,10 @@ const THIRD_SLOTS = {
 };
 
 function computeThirdAssignment() {
-  const thirds = [];
-  'ABCDEFGHIJKL'.split('').forEach(grp => {
-    const s = calcRealStandings(grp);
-    if (s.length >= 3) thirds.push({...s[2], grp});
-  });
-  thirds.sort((a,b)=>{
-    if(b.p!==a.p) return b.p-a.p;
-    const d=((b.gf-b.ga)-(a.gf-a.ga)); if(d) return d;
-    return b.gf-a.gf;
-  });
-  const qualifying = thirds.slice(0,8);
+  const groupsByTeam = teamGroupMap();
+  const qualifying = realBestThirdTeams()
+    .map(name => ({name, grp: groupsByTeam[name]}))
+    .filter(t => t.grp);
   const slots = Object.entries(THIRD_SLOTS)
     .map(([mid,gs])=>({mid:+mid, groups:gs.split(''), eligible:qualifying.filter(t=>gs.includes(t.grp))}))
     .sort((a,b)=>a.eligible.length-b.eligible.length);
@@ -5596,8 +5781,8 @@ function computeThirdAssignment() {
 function resolveSlot(slot) {
   if (/^[12][A-L]$/.test(slot)) {
     const pos=parseInt(slot[0])-1, grp=slot[1];
-    const s=calcRealStandings(grp);
-    return s[pos] ? s[pos].name : null;
+    const order = realTableGroupOrder(grp);
+    return order[pos] || null;
   }
   if (slot.startsWith('3-')) {
     const m=KO.find(x=>x.s1===slot||x.s2===slot);
@@ -5642,7 +5827,7 @@ function slotLabel(slot) {
 }
 
 function getUnlockedRounds() {
-  const groupDone = MATCHES.every(m=>realScores[m.id]!==undefined);
+  const groupDone = realTableCompleteForKnockout();
   if (!groupDone) return [];
   const rounds = ['R32'];
   const check = (round, next) => {
@@ -5658,50 +5843,94 @@ function getPredictions(player) {
   return allPredictions[player];
 }
 
-// ── تیم‌های صعودکننده به یک‌سی‌ودوم (۲ امتیاز برای هر تیم درست، فارغ از رتبه) ──
-// بر اساس امتیازِ ارائه‌شده، مجموعه‌ی ۳۲ تیمِ صعودکننده را می‌سازد:
-// دو تیم اول هر گروه + ۸ تیمِ سومِ برتر.
-function computeQualifiers(standingsFn, scoresFn) {
-  const teams = new Set();
+// ── امتیاز صعود به یک‌سی‌ودوم (۲ امتیاز برای هر تیم درست، فارغ از رتبه) ──
+function predictedQualifierBreakdown(playerName) {
+  const groups = {};
   const thirds = [];
-  'ABCDEFGHIJKL'.split('').forEach(grp => {
-    const s = standingsFn(grp);
-    if (s[0]) teams.add(s[0].name);
-    if (s[1]) teams.add(s[1].name);
+
+  GROUP_LETTERS.forEach(grp => {
+    const s = calcStandings(playerName, grp);
+    groups[grp] = {
+      topTwo: s.slice(0, 2).map(t => t.name),
+      third: s[2] ? s[2].name : null
+    };
     if (s[2]) thirds.push({ ...s[2], grp });
   });
+
   thirds.sort((a, b) => {
     if (b.p !== a.p) return b.p - a.p;
-    const d = ((b.gf - b.ga) - (a.gf - a.ga)); if (d) return d;
-    return b.gf - a.gf;
+    const gdB = b.gf - b.ga, gdA = a.gf - a.ga;
+    if (gdB !== gdA) return gdB - gdA;
+    if (b.gf !== a.gf) return b.gf - a.gf;
+    return b.w - a.w;
   });
-  thirds.slice(0, 8).forEach(t => teams.add(t.name));
+
+  return { groups, bestThirds: thirds.slice(0, 8).map(t => t.name) };
+}
+
+function getRealQualifiers() {
+  const teams = new Set();
+  GROUP_LETTERS.forEach(grp => realTableTopTwo(grp).forEach(t => teams.add(t)));
+  if (realBestThirdsComplete()) realBestThirdTeams().forEach(t => teams.add(t));
   return teams;
 }
 
-// تیم‌هایی که واقعاً صعود کرده‌اند (بر اساس نتایج/جدول گروهی نهایی)
-function getRealQualifiers() {
-  return computeQualifiers(calcRealStandings, () => realScores);
-}
-
-// تیم‌هایی که یک بازیکن پیش‌بینی کرده صعود می‌کنند
 function getPredictedQualifiers(playerName) {
-  return computeQualifiers(grp => calcStandings(playerName, grp), () => allPredictions[playerName] || {});
+  const pred = predictedQualifierBreakdown(playerName);
+  const teams = new Set();
+  GROUP_LETTERS.forEach(grp => pred.groups[grp].topTwo.forEach(t => teams.add(t)));
+  pred.bestThirds.forEach(t => teams.add(t));
+  return teams;
 }
 
-// آیا مرحله گروهی کامل شده؟ (همه نتایج گروهی ثبت شده‌اند)
 function groupStageComplete() {
-  return MATCHES.every(m => realScores[m.id] !== undefined);
+  return realTableCompleteForKnockout();
 }
 
-// امتیاز صعود: ۲ امتیاز برای هر تیمی که بازیکن درست پیش‌بینی کرده به یک‌سی‌ودوم می‌رود
 function calcQualifierPoints(playerName) {
-  if (!groupStageComplete()) return { pts: 0, correct: 0 };
-  const real = getRealQualifiers();
-  const pred = getPredictedQualifiers(playerName);
-  let correct = 0;
-  pred.forEach(t => { if (real.has(t)) correct++; });
-  return { pts: correct * 2, correct };
+  const pred = predictedQualifierBreakdown(playerName);
+  const details = {};
+  let groupPts = 0, groupCorrect = 0;
+
+  GROUP_LETTERS.forEach(grp => {
+    const realTop = realTableTopTwo(grp);
+    const predictedTop = pred.groups[grp] ? pred.groups[grp].topTwo : [];
+    const correct = realTop.length >= 2 ? predictedTop.filter(t => realTop.includes(t)) : [];
+    const pts = correct.length * 2;
+    groupPts += pts;
+    groupCorrect += correct.length;
+    details[grp] = {
+      real: realTop,
+      predicted: predictedTop,
+      correct,
+      pts,
+      active: realTop.length >= 2
+    };
+  });
+
+  const thirdActive = realBestThirdsComplete();
+  const realThirds = thirdActive ? realBestThirdTeams() : [];
+  const thirdCorrectTeams = thirdActive ? pred.bestThirds.filter(t => realThirds.includes(t)) : [];
+  const thirdPts = thirdCorrectTeams.length * 2;
+
+  return {
+    pts: groupPts + thirdPts,
+    correct: groupCorrect + thirdCorrectTeams.length,
+    groupPts,
+    thirdPts,
+    groupCorrect,
+    thirdCorrect: thirdCorrectTeams.length,
+    groupsDone: realTableGroupsWithTopTwo().length,
+    thirdActive,
+    details,
+    bestThirds: {
+      real: realThirds,
+      predicted: pred.bestThirds,
+      correct: thirdCorrectTeams,
+      pts: thirdPts,
+      active: thirdActive
+    }
+  };
 }
 
 // ── شروع ──
@@ -5716,6 +5945,7 @@ document.getElementById('results').style.display = 'none';
 
 buildWelcome();
 maybeAutoUpdateRealScoresOnline();
+maybeAutoUpdateRealTableOnline();
 fetchPredictionsOnline();
 
 function showPredictSection() {
@@ -6015,7 +6245,7 @@ function updateProgress() {
 }
 
 function hideAllViews() {
-  ['match-list','groups-view','knockout-view','real-view','rank-view','daily-view','compare-view']
+  ['match-list','groups-view','knockout-view','real-view','real-table-view','rank-view','daily-view','compare-view']
     .forEach(id => document.getElementById(id).style.display = 'none');
 }
 
@@ -6045,6 +6275,7 @@ function showKnockoutTab(round) {
   hideAllViews();
   document.getElementById('knockout-view').style.display = 'block';
   buildKnockoutView(round);
+  maybeAutoUpdateRealTableOnline();
 }
 
 function buildKnockoutView(roundOverride) {
@@ -6061,7 +6292,7 @@ function buildKnockoutView(roundOverride) {
     container.innerHTML = `<div class="ko-locked">
       <div class="ko-lock-icon">🔒</div>
       <strong>مرحله حذفی قفل است</strong><br>
-      پس از اتمام مرحله گروهی و ورود همه ۷۲ نتیجه واقعی،<br>مرحله یک‌سی‌ودوم فعال می‌شود.
+      پس از تکمیل جدول واقعی گروه‌ها در table.json،<br>مرحله یک‌سی‌ودوم فعال می‌شود.
     </div>`;
     return;
   }
@@ -6277,6 +6508,78 @@ function maybeAutoUpdateRealScoresOnline(force = false) {
   updateRealScoresOnline();
 }
 
+function addOnlineTablePanel(container) {
+  const last = store.get('wc2026_table_last_online_update') || 'هنوز انجام نشده';
+  const panel = document.createElement('div');
+  panel.className = 'online-score-panel';
+  panel.innerHTML = `
+    <div class="online-score-title">📋 جدول واقعی گروه‌ها</div>
+    <div class="online-score-text">
+      این بخش از فایل <b>table.json</b> خوانده می‌شود. رتبه‌های اول و دوم هر گروه به محض ثبت شدن امتیاز صعود می‌دهند؛ امتیاز تیم‌های سوم فقط وقتی ۸ تیم سوم برتر کامل شوند فعال می‌شود.
+      <br>برای ساخت JSON از <a class="table-link" href="table-editor.html" target="_blank" rel="noopener">ویرایشگر جدول واقعی</a> استفاده کنید.
+      <br>آخرین بررسی: <strong>${last}</strong>
+    </div>
+    <div class="online-score-actions">
+      <button class="online-score-btn" onclick="updateRealTableOnline(this)">🔄 دریافت جدول واقعی</button>
+    </div>
+    <div class="online-score-status" id="online-table-status">منبع فعلی: ${ONLINE_TABLE_SOURCE.name}</div>
+  `;
+  container.appendChild(panel);
+}
+
+function setOnlineTableStatus(msg, kind) {
+  const el = document.getElementById('online-table-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `online-score-status ${kind || ''}`;
+}
+
+function maybeAutoUpdateRealTableOnline(force = false) {
+  const lastMs = Number(store.get('wc2026_table_last_online_update_ms') || 0);
+  const due = force || !lastMs || (Date.now() - lastMs > AUTO_SCORE_CHECK_INTERVAL_MS);
+  if (!due) return;
+  updateRealTableOnline();
+}
+
+async function updateRealTableOnline(btn) {
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'در حال بررسی...';
+  }
+  setOnlineTableStatus('در حال دریافت table.json...', '');
+
+  try {
+    const res = await fetch(`${ONLINE_TABLE_SOURCE.url}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    realTable = sanitizeRealTable(data || {});
+
+    const stamp = new Date().toLocaleString('fa-IR');
+    store.set('wc2026_table_last_online_update', stamp);
+    store.set('wc2026_table_last_online_update_ms', String(Date.now()));
+
+    const groupsDone = realTableGroupsWithTopTwo().length;
+    const thirdsDone = realBestThirdTeams().length;
+
+    if (currentFilter === 'real-table') buildRealTableView();
+    else if (currentFilter === 'rank') buildRankView();
+    else if (currentFilter === 'ko') buildKnockoutView(currentKoRound);
+    else if (currentFilter === 'real') { buildRealView(); scrollToCurrentDateIn('real-view'); }
+
+    setOnlineTableStatus(`✅ ${groupsDone}/12 گروه و ${thirdsDone}/8 تیم سوم برتر از table.json خوانده شد.`, 'ok');
+    if (btn) showToast('جدول واقعی به‌روز شد');
+  } catch (err) {
+    console.error('updateRealTableOnline:', err);
+    setOnlineTableStatus('❌ دریافت table.json ناموفق بود. آدرس فایل یا ساختار JSON را بررسی کنید.', 'err');
+    if (btn) showToast('خطا در دریافت جدول واقعی');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔄 دریافت جدول واقعی';
+    }
+  }
+}
+
 async function fetchPredictionsOnline(silent = true, btn = null) {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
@@ -6310,9 +6613,10 @@ async function fetchPredictionsOnline(silent = true, btn = null) {
     if (changed) {
       saveData(); saveKoPreds();
       buildWelcome();
-      if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); }
+      if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); scrollToCurrentDateIn('results-list'); }
       else if (currentFilter === 'rank') buildRankView();
       else if (currentFilter === 'daily') buildDailyView();
+      else if (currentFilter === 'real-table') buildRealTableView();
       else if (currentFilter === 'groups') buildGroupsView(currentPlayer);
     }
     store.set('wc2026_preds_last_sync', String(Date.now()));
@@ -6399,10 +6703,11 @@ async function updateRealScoresOnline(btn) {
     store.set('wc2026_real_last_online_update', stamp);
     store.set('wc2026_real_last_online_update_ms', String(Date.now()));
 
-    if (currentFilter === 'real') buildRealView();
+    if (currentFilter === 'real') { buildRealView(); scrollToCurrentDateIn('real-view'); }
     else if (currentFilter === 'rank') buildRankView();
     else if (currentFilter === 'daily') buildDailyView();
-    else if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); }
+    else if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); scrollToCurrentDateIn('results-list'); }
+    else if (currentFilter === 'real-table') buildRealTableView();
     else if (currentFilter === 'all' || currentFilter === 'done' || currentFilter === 'todo') buildMatchList();
 
     if (foundScores > 0) {
@@ -6444,6 +6749,7 @@ function showRealTab() {
   hideAllViews();
   document.getElementById('real-view').style.display = 'block';
   buildRealView();
+  scrollToCurrentDateIn('real-view');
   maybeAutoUpdateRealScoresOnline(true);
 }
 
@@ -6457,6 +6763,7 @@ function showRankTab() {
   document.getElementById('rank-view').style.display = 'block';
   buildRankView();
   maybeAutoUpdateRealScoresOnline();
+  maybeAutoUpdateRealTableOnline();
 }
 
 function showDailyTab() {
@@ -6469,6 +6776,18 @@ function showDailyTab() {
   document.getElementById('daily-view').style.display = 'block';
   buildDailyView();
   maybeAutoUpdateRealScoresOnline();
+}
+
+function showRealTableTab() {
+  currentFilter = 'real-table';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-real-table').classList.add('active');
+  hideAllViews();
+  document.getElementById('real-table-view').style.display = 'block';
+  buildRealTableView();
+  maybeAutoUpdateRealTableOnline(true);
 }
 
 // ── نتایج واقعی ──
@@ -6492,6 +6811,127 @@ function buildRealView() {
       detail.replace(/</g,'&lt;') + '</div>';
     container.appendChild(box);
   }
+}
+
+function qualificationPlayers() {
+  return Object.keys(allPredictions).filter(p => Object.keys(allPredictions[p] || {}).length > 0);
+}
+
+function qualifierRowHtml(row) {
+  const name = playerDisplayName(row.name);
+  const correct = row.correct && row.correct.length
+    ? row.correct.map(teamFa).join('، ')
+    : 'بدون تیم درست';
+  return `<div class="qual-row">
+    <span class="qual-name">${escapeHtml(name)}</span>
+    <span class="qual-detail">${escapeHtml(correct)}</span>
+    <span class="qual-pts">${row.pts} امتیاز</span>
+  </div>`;
+}
+
+function sortQualifierRows(rows) {
+  return rows.sort((a, b) =>
+    b.pts - a.pts ||
+    (b.correct || []).length - (a.correct || []).length ||
+    playerDisplayName(a.name).localeCompare(playerDisplayName(b.name), 'fa')
+  );
+}
+
+function buildQualificationScoreGrid(players, qByName, getter, inactiveText) {
+  if (!players.length) return '<div class="qual-empty">هنوز پیش‌بینی‌ای برای امتیازدهی وجود ندارد.</div>';
+  const rows = players.map(name => ({ name, ...getter(qByName[name]) }));
+  if (rows.every(r => !r.active)) return `<div class="qual-empty">${escapeHtml(inactiveText)}</div>`;
+  return `<div class="qual-grid">${sortQualifierRows(rows).map(qualifierRowHtml).join('')}</div>`;
+}
+
+function realTableBadge(team, idx) {
+  if (idx === 0 || idx === 1) return '<span class="st-q q">صعود</span>';
+  if (idx === 2 && realBestThirdTeams().includes(team)) return '<span class="st-q q">سوم برتر</span>';
+  if (idx === 2 && !realBestThirdsComplete()) return '<span class="st-q maybe">در انتظار</span>';
+  return '<span class="st-q" style="background:rgba(231,76,60,.25);color:#e74c3c">حذف</span>';
+}
+
+function buildRealTableView() {
+  const container = document.getElementById('real-table-view');
+  container.innerHTML = '';
+  addOnlineTablePanel(container);
+
+  const groupsDone = realTableGroupsWithTopTwo().length;
+  const thirdCount = realBestThirdTeams().length;
+  const note = document.createElement('div');
+  note.className = 'real-table-note';
+  note.innerHTML = `گروه‌های دارای تیم اول و دوم: <b>${groupsDone}/12</b> · تیم‌های سوم برتر ثبت‌شده: <b>${thirdCount}/8</b><br>
+    امتیاز صعود برای هر تیم درست ۲ امتیاز است. رتبه دقیق مهم نیست؛ کافی است تیم صعودکننده درست باشد.`;
+  container.appendChild(note);
+
+  const players = qualificationPlayers();
+  const qByName = {};
+  players.forEach(name => { qByName[name] = calcQualifierPoints(name); });
+  const validGroups = groupTeamsMap();
+
+  GROUP_LETTERS.forEach(grp => {
+    const order = realTableGroupOrder(grp);
+    const rows = order.length
+      ? order.map((team, idx) => `<tr class="${idx < 2 ? (idx === 0 ? 'row-q1' : 'row-q2') : idx === 2 ? 'row-q3' : ''}">
+          <td>${idx + 1}</td>
+          <td><div class="st-team-cell"><span class="st-flag">${FLAGS[team] || '🏳'}</span><span class="st-name">${teamFa(team)}</span>${realTableBadge(team, idx)}</div></td>
+        </tr>`).join('')
+      : `<tr><td colspan="2" style="text-align:center;color:var(--dim);padding:.8rem">هنوز رتبه‌ای برای این گروه ثبت نشده است.</td></tr>`;
+
+    const missingCount = Math.max(0, validGroups[grp].length - order.length);
+    const sec = document.createElement('div');
+    sec.className = 'grp-section';
+    sec.innerHTML = `
+      <div class="grp-header">
+        <span class="grp-title">گروه ${grp}</span>
+        <span class="grp-coverage">${order.length ? `${order.length}/4 رتبه ثبت شده` : 'در انتظار table.json'}</span>
+      </div>
+      <table class="st-table">
+        <thead><tr><th>#</th><th>تیم</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${missingCount && order.length ? `<div class="qual-empty">${missingCount} رتبه بعدی این گروه هنوز وارد نشده است.</div>` : ''}
+      <div class="recap-meta" style="margin:.75rem 0 .25rem">امتیاز پیش‌بینی‌گران برای صعود از این گروه</div>
+      ${buildQualificationScoreGrid(players, qByName, q => ({
+        pts: q.details[grp].pts,
+        correct: q.details[grp].correct,
+        active: q.details[grp].active
+      }), 'برای این گروه هنوز تیم اول و دوم در table.json ثبت نشده‌اند.')}
+    `;
+    container.appendChild(sec);
+  });
+
+  const bestThirds = realBestThirdTeams();
+  const thirdRows = bestThirds.length
+    ? bestThirds.map((team, idx) => {
+        const info = realTableTeamPosition(team);
+        return `<tr class="${idx < 8 ? 'row-q2' : ''}">
+          <td>${idx + 1}</td>
+          <td><div class="st-team-cell"><span class="st-flag">${FLAGS[team] || '🏳'}</span><span class="st-name">${teamFa(team)}</span><span style="font-size:.6rem;color:var(--dim);font-weight:700;flex-shrink:0">گ${info ? info.grp : '?'}</span><span class="st-q q">صعود</span></div></td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="2" style="text-align:center;color:var(--dim);padding:.8rem">هنوز تیم سوم برتری ثبت نشده است.</td></tr>`;
+
+  const thirdSec = document.createElement('div');
+  thirdSec.className = 'grp-section';
+  thirdSec.style.borderColor = 'var(--gold)';
+  thirdSec.innerHTML = `
+    <div class="grp-header">
+      <span class="grp-title">🏅 ۸ تیم سوم برتر واقعی</span>
+      <span class="grp-coverage">${bestThirds.length}/8 ثبت شده</span>
+    </div>
+    <table class="st-table">
+      <thead><tr><th>#</th><th>تیم</th></tr></thead>
+      <tbody>${thirdRows}</tbody>
+    </table>
+    <div class="recap-meta" style="margin:.75rem 0 .25rem">امتیاز پیش‌بینی‌گران برای تیم‌های سوم برتر</div>
+    ${buildQualificationScoreGrid(players, qByName, q => ({
+      pts: q.bestThirds.pts,
+      correct: q.bestThirds.correct,
+      active: q.bestThirds.active
+    }), 'این بخش وقتی فعال می‌شود که هر ۸ تیم سوم برتر در table.json ثبت شده باشند.')}
+  `;
+  container.appendChild(thirdSec);
 }
 
 // نتایج خراب را اصلاح/پاک می‌کند سپس دوباره رندر می‌کند
@@ -6547,10 +6987,11 @@ function renderRealMatches(container) {
   // ── گروه‌ها ──
   addSectionHeader('⚽ مرحله گروهی');
   const groups = {};
-  MATCHES.forEach(m => { if(!groups[m.date]) groups[m.date]=[]; groups[m.date].push(m); });
+  chronologicalMatches(MATCHES).forEach(m => { if(!groups[m.date]) groups[m.date]=[]; groups[m.date].push(m); });
   Object.entries(groups).forEach(([date, ms]) => {
     const sep = document.createElement('div');
     sep.className = 'date-sep';
+    sep.dataset.date = date;
     sep.innerHTML = `<span>📅 ${faDate(date)}</span>`;
     container.appendChild(sep);
     ms.forEach(m => container.appendChild(buildRealCard(m)));
@@ -6561,7 +7002,7 @@ function renderRealMatches(container) {
   if (unlocked.length === 0) {
     const msg = document.createElement('div');
     msg.style.cssText = 'text-align:center;color:var(--dim);padding:1.5rem;font-size:.82rem';
-    msg.innerHTML = '🔒 مراحل حذفی پس از تکمیل نتایج گروهی قفل می‌شوند';
+    msg.innerHTML = '🔒 مراحل حذفی پس از تکمیل جدول واقعی گروه‌ها در table.json باز می‌شوند';
     container.appendChild(msg);
     return;
   }
@@ -6573,6 +7014,7 @@ function renderRealMatches(container) {
     Object.entries(byDate).forEach(([date, ms]) => {
       const sep = document.createElement('div');
       sep.className = 'date-sep';
+      sep.dataset.date = date;
       sep.innerHTML = `<span>📅 ${faDate(date)}</span>`;
       container.appendChild(sep);
       ms.forEach(m => container.appendChild(buildKoRealCard(m)));
@@ -6772,10 +7214,16 @@ function buildRankView() {
 
   const rankings = allPlayers.map(p => {
     const pobj = PLAYERS.find(x => x.name === p);
-    return { name: p, faName: pobj ? pobj.faName : p, avatar: pobj ? pobj.avatar : '👤', ...calcPlayerTotal(p) };
-  }).sort((a, b) => b.total - a.total || b.exact - a.exact || b.gd - a.gd);
+    return { name: p, faName: pobj ? pobj.faName : p, avatar: pobj ? pobj.avatar : '👤', ...calcPlayerTotal(p), profile: predictionProfile(p) };
+  }).sort((a, b) =>
+    b.total - a.total ||
+    b.netAcc - a.netAcc ||
+    b.exact - a.exact ||
+    a.faName.localeCompare(b.faName, 'fa')
+  );
 
   const rankContext = getLeaderboardContext(rankings);
+  const badgeLeaders = buildBadgeLeaders(rankings);
   const drama = buildLeaderboardDramaCard(rankings, rankContext, gradedCount);
   if (drama) container.appendChild(drama);
 
@@ -6783,7 +7231,7 @@ function buildRankView() {
   rankings.forEach((p, i) => {
     const card = document.createElement('div');
     const moveHtml = renderMovePill(rankContext.movements[p.name]);
-    const badgesHtml = renderPredictionBadges(p.name, p);
+    const badgesHtml = renderPredictionBadges(p.name, p, badgeLeaders);
     card.className = `rank-card${p.name === currentPlayer ? ' me' : ''}`;
     card.innerHTML = `
       <div class="rank-pos">${i < 3 ? medals[i] : i + 1}</div>
@@ -7259,6 +7707,7 @@ function showResults() {
   try {
     buildPlayersBar();
     buildResultsList();
+    scrollToCurrentDateIn('results-list');
   } catch (err) {
     console.error('[wc2026] showResults:', err);
     const list = document.getElementById('results-list');
@@ -7275,7 +7724,7 @@ function showMain() {
     showRankTab();
   } else {
     showPredictTabs();
-    if (['compare','rank','daily','real'].includes(currentFilter)) filterTab('all');
+    if (['compare','rank','daily','real','real-table'].includes(currentFilter)) filterTab('all');
   }
 }
 
@@ -7315,11 +7764,21 @@ function buildResultsList() {
     return;
   }
 
+  let currentDate = null;
   chronologicalMatches(MATCHES).forEach(m => {
     const picks = players.map(p => ({
       player: p, pick: (allPredictions[p] && allPredictions[p][m.id]) || undefined
     })).filter(x => Array.isArray(x.pick) && x.pick.length >= 2);
     if (picks.length === 0) return;
+
+    if (m.date !== currentDate) {
+      currentDate = m.date;
+      const sep = document.createElement('div');
+      sep.className = 'date-sep';
+      sep.dataset.date = m.date;
+      sep.innerHTML = `<span>📅 ${faDate(m.date)}</span>`;
+      list.appendChild(sep);
+    }
 
     const f1 = FLAGS[m.t1] || '🏳';
     const f2 = FLAGS[m.t2] || '🏳';
