@@ -5623,9 +5623,8 @@ function qualifierPointsByFinishDate(players) {
       const detail = q.details && q.details[grp];
       if (detail && detail.active) addEvolutionQualifierPoints(byDate, groupFinishDate(grp), name, detail.pts);
     });
-    if (q.bestThirds && q.bestThirds.active) {
-      addEvolutionQualifierPoints(byDate, finalDate, name, q.bestThirds.pts);
-    }
+    // Best-third qualifiers are already included in the relevant group's detail
+    // as soon as they are entered, so do not add q.bestThirds.pts separately here.
   });
   return byDate;
 }
@@ -6120,7 +6119,9 @@ function predictedQualifierBreakdown(playerName) {
 function getRealQualifiers() {
   const teams = new Set();
   GROUP_LETTERS.forEach(grp => realTableTopTwo(grp).forEach(t => teams.add(t)));
-  if (realBestThirdsComplete()) realBestThirdTeams().forEach(t => teams.add(t));
+  // Count best-third qualifiers as soon as they are entered in table.json.
+  // They do not need to wait until all 8 best-third teams are known.
+  realBestThirdTeams().forEach(t => teams.add(t));
   return teams;
 }
 
@@ -6139,11 +6140,16 @@ function groupStageComplete() {
 function calcQualifierPoints(playerName) {
   const pred = predictedQualifierBreakdown(playerName);
   const predictedQualifiers = getPredictedQualifiers(playerName);
+  const realThirdsNow = realBestThirdTeams();
   const details = {};
   let groupPts = 0, groupCorrect = 0;
 
   GROUP_LETTERS.forEach(grp => {
     const realTop = realTableTopTwo(grp);
+    const realThird = realTableThirdTeam(grp);
+    const realGroupQualifiers = [...realTop];
+    if (realThird && realThirdsNow.includes(realThird)) realGroupQualifiers.push(realThird);
+
     const groupPred = pred.groups[grp] || { topTwo: [], third: null };
     const predictedGroupQualifiers = [
       ...groupPred.topTwo,
@@ -6151,29 +6157,32 @@ function calcQualifierPoints(playerName) {
     ];
 
     // Qualification points are for the team qualifying, not for the exact route.
-    // So a team predicted as a best-third qualifier must still count if it actually
-    // finishes first/second, and vice versa.
-    const correct = realTop.length >= 2 ? realTop.filter(t => predictedQualifiers.has(t)) : [];
+    // A real best-third team counts as soon as it appears in table.json bestThirds,
+    // even if fewer than 8 best-third teams have been entered so far.
+    const correct = realGroupQualifiers.filter(t => predictedQualifiers.has(t));
     const pts = correct.length * 2;
     groupPts += pts;
     groupCorrect += correct.length;
     details[grp] = {
-      real: realTop,
+      real: realGroupQualifiers,
       predicted: predictedGroupQualifiers,
       correct,
       pts,
-      active: realTop.length >= 2
+      active: realGroupQualifiers.length > 0
     };
   });
 
-  const thirdActive = realBestThirdsComplete();
-  const realThirds = thirdActive ? realBestThirdTeams() : [];
-  const thirdCorrectTeams = thirdActive ? realThirds.filter(t => predictedQualifiers.has(t)) : [];
+  const realThirds = realThirdsNow;
+  const thirdActive = realThirds.length > 0;
+  const thirdCorrectTeams = realThirds.filter(t => predictedQualifiers.has(t));
   const thirdPts = thirdCorrectTeams.length * 2;
 
   return {
-    pts: groupPts + thirdPts,
-    correct: groupCorrect + thirdCorrectTeams.length,
+    // The total is already built group-by-group above, including any currently
+    // entered best-third qualifiers. Do not add thirdPts again, otherwise those
+    // teams would be double-counted.
+    pts: groupPts,
+    correct: groupCorrect,
     groupPts,
     thirdPts,
     groupCorrect,
@@ -7123,7 +7132,7 @@ function buildRealTableView() {
   const note = document.createElement('div');
   note.className = 'real-table-note';
   note.innerHTML = `گروه‌های دارای تیم اول و دوم: <b>${groupsDone}/12</b> · تیم‌های سوم برتر ثبت‌شده: <b>${thirdCount}/8</b><br>
-    امتیاز صعود برای هر تیم درست ۲ امتیاز است. رتبه دقیق مهم نیست؛ کافی است تیم صعودکننده درست باشد.`;
+    امتیاز صعود برای هر تیم درست ۲ امتیاز است. رتبه دقیق مهم نیست؛ تیم‌های سوم برتر هم به‌محض ثبت در table.json امتیاز می‌گیرند، حتی اگر هنوز هر ۸ تیم کامل نشده باشند.`;
   container.appendChild(note);
 
   const players = qualificationPlayers();
@@ -7186,12 +7195,6 @@ function buildRealTableView() {
       <thead><tr><th>#</th><th>تیم</th></tr></thead>
       <tbody>${thirdRows}</tbody>
     </table>
-    <div class="recap-meta" style="margin:.75rem 0 .25rem">امتیاز پیش‌بینی‌گران برای تیم‌های سوم برتر</div>
-    ${buildQualificationScoreGrid(players, qByName, q => ({
-      pts: q.bestThirds.pts,
-      correct: q.bestThirds.correct,
-      active: q.bestThirds.active
-    }), 'این بخش وقتی فعال می‌شود که هر ۸ تیم سوم برتر در table.json ثبت شده باشند.')}
   `;
   container.appendChild(thirdSec);
 }
