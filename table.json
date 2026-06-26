@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-25T22:11:51.835Z",
+  "updated": "2026-06-26T04:00:28.252Z",
   "groups": {
     "A": [
       "Mexico",
@@ -20,13 +20,22 @@
       "Haiti"
     ],
     "D": [
-      "USA"
+      "USA",
+      "Australia",
+      "Paraguay",
+      "Turkey"
     ],
     "E": [
       "Germany",
       "Ivory Coast",
       "Ecuador",
       "Curaçao"
+    ],
+    "F": [
+      "Netherlands",
+      "Japan",
+      "Sweden",
+      "Tunisia"
     ],
     "J": [
       "Argentina"
