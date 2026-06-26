@@ -212,7 +212,10 @@ button{cursor:pointer;font-family:inherit}
 .evo-hit{fill:rgba(255,255,255,0);stroke:none;cursor:pointer;pointer-events:all}
 .evo-tip-box{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.48rem .6rem;margin-top:.55rem;font-size:.7rem;font-weight:800;color:var(--text);line-height:1.55;text-align:right}
 .evo-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.4rem;margin-top:.7rem}
-.evo-legend-item{display:flex;align-items:center;gap:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.42rem .5rem;min-width:0}
+.evo-legend-item{display:flex;align-items:center;gap:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.42rem .5rem;min-width:0;font-family:inherit;text-align:right;cursor:pointer;color:inherit}
+.evo-legend-item.active{border-color:rgba(240,165,0,.8);background:rgba(240,165,0,.12)}
+.evo-legend-item:not(.active){opacity:.68}
+.evo-legend-item:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .evo-dot{width:.65rem;height:.65rem;border-radius:50%;flex-shrink:0}
 .evo-name{font-size:.7rem;font-weight:900;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .evo-meta{font-size:.62rem;color:var(--dim);margin-right:auto;white-space:nowrap}
@@ -4940,6 +4943,8 @@ let koReal = {};          // { matchId: [s1,s2] }
 let currentFilter = 'all';
 let currentKoRound = 'R32';
 let currentDailyDate = null;
+let activeEvolutionPlayers = new Set();
+let evolutionSelectionTouched = false;
 const ADMIN_MERGE_CODE = 'MERGE2026';
 
 // ── ذخیره‌سازی امن ──
@@ -5701,7 +5706,7 @@ function renderRankEvolutionSvg(data, rankings) {
   }).join('');
 
   const lines = rankings.map((p, i) => {
-    const color = rankEvolutionColor(i);
+    const color = rankEvolutionColor(p.evoColorIndex !== undefined ? p.evoColorIndex : i);
     const points = snapshots.map((s, idx) => `${x(idx).toFixed(1)},${y(s.values[p.name] || 0).toFixed(1)}`).join(' ');
     const circles = snapshots.map((s, idx) => {
       const value = s.values[p.name] || 0;
@@ -5730,6 +5735,14 @@ function renderRankEvolutionSvg(data, rankings) {
   </svg>`;
 }
 
+function toggleEvolutionPlayer(name) {
+  if (!name) return;
+  evolutionSelectionTouched = true;
+  if (activeEvolutionPlayers.has(name)) activeEvolutionPlayers.delete(name);
+  else activeEvolutionPlayers.add(name);
+  buildRankView();
+}
+
 function showEvolutionTip(event) {
   const target = event && event.currentTarget ? event.currentTarget : null;
   const info = target ? target.getAttribute('data-info') : '';
@@ -5756,25 +5769,37 @@ function buildRankEvolutionCard(rankings) {
   }
 
   const latest = data.snapshots[data.snapshots.length - 1];
-  const topPlayer = rankings[0];
-  const defaultInfo = topPlayer ? `${evolutionPlayerName(topPlayer)}: ${latest.values[topPlayer.name] || 0} امتیاز · رتبه ${latest.ranks[topPlayer.name] || '-'} · ${latest.label}` : 'برای دیدن جزئیات، روی نقطه‌های نمودار بزنید.';
-  const legend = rankings.map((p, i) => {
+  const validNames = new Set(rankings.map(p => p.name));
+  activeEvolutionPlayers = evolutionSelectionTouched
+    ? new Set([...activeEvolutionPlayers].filter(name => validNames.has(name)))
+    : new Set(rankings.map(p => p.name));
+  const rankedWithColor = rankings.map((p, i) => ({...p, evoColorIndex: i}));
+  const visibleRankings = rankedWithColor.filter(p => activeEvolutionPlayers.has(p.name));
+  const firstVisible = visibleRankings[0];
+  const defaultInfo = firstVisible
+    ? `${evolutionPlayerName(firstVisible)}: ${latest.values[firstVisible.name] || 0} امتیاز · رتبه ${latest.ranks[firstVisible.name] || '-'} · ${latest.label}`
+    : 'برای رسم نمودار، بازیکنان را از لیست پایین انتخاب کنید.';
+  const legend = rankedWithColor.map((p, i) => {
     const color = rankEvolutionColor(i);
-    return `<div class="evo-legend-item">
+    const active = activeEvolutionPlayers.has(p.name);
+    return `<button type="button" class="evo-legend-item${active ? ' active' : ''}" data-player="${escapeHtml(p.name)}" onclick="toggleEvolutionPlayer(this.dataset.player)" aria-pressed="${active ? 'true' : 'false'}">
       <span class="evo-dot" style="background:${color}"></span>
       <span class="evo-name">${escapeHtml(evolutionPlayerName(p))}</span>
       <span class="evo-meta">رتبه ${latest.ranks[p.name] || '-'} · ${latest.values[p.name] || 0}</span>
-    </div>`;
+    </button>`;
   }).join('');
+  const chartHtml = visibleRankings.length
+    ? `<div class="evo-chart-wrap">${renderRankEvolutionSvg(data, visibleRankings)}</div>
+      <div class="evo-tip-box" id="evo-tip-box">${escapeHtml(defaultInfo)}</div>`
+    : `<div class="evo-empty">هیچ بازیکنی برای نمودار انتخاب نشده است.<br>از لیست پایین یک یا چند نفر را انتخاب کنید.</div>`;
 
   card.innerHTML = `<div class="evo-head">
     <div>
       <div class="evo-title">📈 مسیر امتیازها</div>
-      <div class="evo-sub">محور عمودی امتیاز تجمعی است و محور افقی روزهای بازی.</div>
+      <div class="evo-sub">برای مقایسه خلوت‌تر، بازیکنان دلخواه را از لیست پایین انتخاب کنید.</div>
     </div>
   </div>
-  <div class="evo-chart-wrap">${renderRankEvolutionSvg(data, rankings)}</div>
-  <div class="evo-tip-box" id="evo-tip-box">${escapeHtml(defaultInfo)}</div>
+  ${chartHtml}
   <div class="evo-legend">${legend}</div>`;
   return card;
 }
@@ -6786,7 +6811,7 @@ function addOnlineTablePanel(container) {
   panel.innerHTML = `
     <div class="online-score-title">📋 جدول واقعی گروه‌ها</div>
     <div class="online-score-text">
-      این بخش از فایل <b>table.json</b> خوانده می‌شود. امتیاز صعود برای خودِ تیم صعودکننده است، نه مسیر صعود؛ بنابراین تیمی که در پیش‌بینی جزو ۸ تیم سوم برتر بوده، اگر در واقعیت اول/دوم هم شود امتیاز می‌گیرد. امتیاز تیم‌های سوم واقعی فقط وقتی ۸ تیم سوم برتر کامل شوند فعال می‌شود.
+      این بخش از فایل <b>table.json</b> خوانده می‌شود. امتیاز صعود برای خودِ تیم صعودکننده است، نه مسیر صعود؛ بنابراین تیمی که در پیش‌بینی جزو ۸ تیم سوم برتر بوده، اگر در واقعیت اول/دوم هم شود امتیاز می‌گیرد. تیم‌های سوم واقعی هم به‌محض ثبت در table.json امتیاز می‌گیرند، حتی اگر هنوز هر ۸ تیم کامل نشده باشند.
       <br>آخرین بررسی: <strong>${last}</strong>
     </div>
     <div class="online-score-actions">
