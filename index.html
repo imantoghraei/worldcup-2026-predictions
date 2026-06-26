@@ -6138,19 +6138,28 @@ function groupStageComplete() {
 
 function calcQualifierPoints(playerName) {
   const pred = predictedQualifierBreakdown(playerName);
+  const predictedQualifiers = getPredictedQualifiers(playerName);
   const details = {};
   let groupPts = 0, groupCorrect = 0;
 
   GROUP_LETTERS.forEach(grp => {
     const realTop = realTableTopTwo(grp);
-    const predictedTop = pred.groups[grp] ? pred.groups[grp].topTwo : [];
-    const correct = realTop.length >= 2 ? predictedTop.filter(t => realTop.includes(t)) : [];
+    const groupPred = pred.groups[grp] || { topTwo: [], third: null };
+    const predictedGroupQualifiers = [
+      ...groupPred.topTwo,
+      ...(groupPred.third && pred.bestThirds.includes(groupPred.third) ? [groupPred.third] : [])
+    ];
+
+    // Qualification points are for the team qualifying, not for the exact route.
+    // So a team predicted as a best-third qualifier must still count if it actually
+    // finishes first/second, and vice versa.
+    const correct = realTop.length >= 2 ? realTop.filter(t => predictedQualifiers.has(t)) : [];
     const pts = correct.length * 2;
     groupPts += pts;
     groupCorrect += correct.length;
     details[grp] = {
       real: realTop,
-      predicted: predictedTop,
+      predicted: predictedGroupQualifiers,
       correct,
       pts,
       active: realTop.length >= 2
@@ -6159,7 +6168,7 @@ function calcQualifierPoints(playerName) {
 
   const thirdActive = realBestThirdsComplete();
   const realThirds = thirdActive ? realBestThirdTeams() : [];
-  const thirdCorrectTeams = thirdActive ? pred.bestThirds.filter(t => realThirds.includes(t)) : [];
+  const thirdCorrectTeams = thirdActive ? realThirds.filter(t => predictedQualifiers.has(t)) : [];
   const thirdPts = thirdCorrectTeams.length * 2;
 
   return {
@@ -6768,7 +6777,7 @@ function addOnlineTablePanel(container) {
   panel.innerHTML = `
     <div class="online-score-title">📋 جدول واقعی گروه‌ها</div>
     <div class="online-score-text">
-      این بخش از فایل <b>table.json</b> خوانده می‌شود. رتبه‌های اول و دوم هر گروه به محض ثبت شدن امتیاز صعود می‌دهند؛ امتیاز تیم‌های سوم فقط وقتی ۸ تیم سوم برتر کامل شوند فعال می‌شود.
+      این بخش از فایل <b>table.json</b> خوانده می‌شود. امتیاز صعود برای خودِ تیم صعودکننده است، نه مسیر صعود؛ بنابراین تیمی که در پیش‌بینی جزو ۸ تیم سوم برتر بوده، اگر در واقعیت اول/دوم هم شود امتیاز می‌گیرد. امتیاز تیم‌های سوم واقعی فقط وقتی ۸ تیم سوم برتر کامل شوند فعال می‌شود.
       <br>آخرین بررسی: <strong>${last}</strong>
     </div>
     <div class="online-score-actions">
