@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-27T04:56:38.141Z",
+  "updated": "2026-06-27T23:33:15.227Z",
   "groups": {
     "A": [
       "Mexico",
@@ -57,6 +57,12 @@
     ],
     "J": [
       "Argentina"
+    ],
+    "L": [
+      "England",
+      "Croatia",
+      "Ghana",
+      "Panama"
     ]
   },
   "bestThirds": [
@@ -64,6 +70,7 @@
     "Ecuador",
     "Bosnia/Herzeg.",
     "Paraguay",
-    "Senegal"
+    "Senegal",
+    "Ghana"
   ]
 }
