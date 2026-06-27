@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-27T02:25:02.000Z",
+  "updated": "2026-06-27T04:56:38.141Z",
   "groups": {
     "A": [
       "Mexico",
@@ -37,6 +37,12 @@
       "Sweden",
       "Tunisia"
     ],
+    "G": [
+      "Belgium",
+      "Egypt",
+      "IR Iran",
+      "New Zealand"
+    ],
     "H": [
       "Spain",
       "Cape Verde",
@@ -57,6 +63,7 @@
     "Sweden",
     "Ecuador",
     "Bosnia/Herzeg.",
-    "Paraguay"
+    "Paraguay",
+    "Senegal"
   ]
 }
