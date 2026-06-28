@@ -6876,14 +6876,19 @@ function maybeAutoUpdateRealTableOnline(force = false) {
 }
 
 let _realTableFetchInFlight = null;
-function ensureRealTableForPrediction() {
-  // When users go straight to "وارد کردن پیش‌بینی‌ها" they may never open the
-  // results/table tabs, so force-load table.json here as well. This makes the
-  // knockout fixtures and group qualification points available in prediction mode.
+function ensureRealTableOnline() {
+  // Force-load table.json and share the same in-flight request between tabs.
+  // This keeps knockout fixtures in prediction, real-results and comparison views
+  // resolved to real team names instead of placeholders such as "اول گروه F".
   if (_realTableFetchInFlight) return _realTableFetchInFlight;
   _realTableFetchInFlight = updateRealTableOnline()
     .finally(() => { _realTableFetchInFlight = null; });
   return _realTableFetchInFlight;
+}
+
+function ensureRealTableForPrediction() {
+  // Backwards-compatible name used by the prediction entry flow.
+  return ensureRealTableOnline();
 }
 
 async function updateRealTableOnline(btn) {
@@ -6910,6 +6915,7 @@ async function updateRealTableOnline(btn) {
     else if (currentFilter === 'rank') { buildRankView(); scrollToRankTop(); }
     else if (currentFilter === 'ko') buildKnockoutView(currentKoRound);
     else if (currentFilter === 'real') { buildRealView(); scrollToCurrentDateIn('real-view'); }
+    else if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); scrollToCurrentDateIn('results-list'); }
 
     setOnlineTableStatus(`✅ ${groupsDone}/12 گروه و ${thirdsDone}/8 تیم سوم برتر از table.json خوانده شد.`, 'ok');
     if (btn) showToast('جدول واقعی به‌روز شد');
@@ -7096,6 +7102,7 @@ function showRealTab() {
   buildRealView();
   scrollToCurrentDateIn('real-view');
   maybeAutoUpdateRealScoresOnline(true);
+  ensureRealTableOnline();
 }
 
 function showRankTab() {
@@ -8104,6 +8111,7 @@ function showResults() {
     if (list) list.innerHTML = '<div style="text-align:center;color:var(--red);padding:2rem">خطا در نمایش مقایسه:<br>' + (err && err.message) + '</div>';
   }
   maybeAutoUpdateRealScoresOnline();
+  ensureRealTableOnline();
 }
 
 function showMain() {
