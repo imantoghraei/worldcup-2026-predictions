@@ -6034,11 +6034,48 @@ const THIRD_SLOTS = {
   82:'AEHIJ', 81:'BEFIJ', 85:'EFGIJ', 87:'DEIJL'
 };
 
+// Official/confirmed placement of the eight best third-place teams.
+// Key = alphabetical list of the third-place groups that qualified.
+// Value = match id -> group letter.
+// This fixes the R32 bracket when the best-thirds are B,D,E,F,I,J,K,L
+// (the current table.json / FIFA app bracket shown by the user).
+const THIRD_ASSIGNMENT_BY_COMBO = {
+  BDEFIJKL: {
+    74:'D', // 1E vs 3D
+    77:'F', // 1I vs 3F
+    79:'E', // 1A vs 3E
+    80:'K', // 1L vs 3K
+    82:'I', // 1G vs 3I
+    81:'B', // 1D vs 3B
+    85:'J', // 1B vs 3J
+    87:'L'  // 1K vs 3L
+  }
+};
+
 function computeThirdAssignment() {
   const groupsByTeam = teamGroupMap();
   const qualifying = realBestThirdTeams()
     .map(name => ({name, grp: groupsByTeam[name]}))
     .filter(t => t.grp);
+
+  const byGroup = {};
+  qualifying.forEach(t => { byGroup[t.grp] = t.name; });
+
+  // Use the confirmed bracket mapping whenever the group combination is known.
+  // This avoids the previous greedy assignment, which produced wrong fixtures
+  // such as Germany vs Bosnia instead of Germany vs Paraguay.
+  const comboKey = qualifying.map(t => t.grp).sort().join('');
+  const official = THIRD_ASSIGNMENT_BY_COMBO[comboKey];
+  if (official) {
+    const assignment = {};
+    Object.entries(official).forEach(([mid, grp]) => {
+      if (byGroup[grp]) assignment[mid] = byGroup[grp];
+    });
+    return assignment;
+  }
+
+  // Fallback for any other future/partial combination: assign a valid eligible
+  // third-place team to each compatible slot without duplicates.
   const slots = Object.entries(THIRD_SLOTS)
     .map(([mid,gs])=>({mid:+mid, groups:gs.split(''), eligible:qualifying.filter(t=>gs.includes(t.grp))}))
     .sort((a,b)=>a.eligible.length-b.eligible.length);
