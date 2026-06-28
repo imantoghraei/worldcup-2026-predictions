@@ -6281,6 +6281,7 @@ function showPredictSection() {
   document.getElementById('predict-section').style.display = 'flex';
   document.getElementById('wbtn-predict').classList.add('active');
   document.getElementById('wbtn-view').classList.remove('active');
+  ensureRealTableForPrediction();
 }
 
 function buildWelcome() {
@@ -6386,6 +6387,7 @@ function selectPlayer(name) {
   document.getElementById('main').style.display = 'block';
   showPredictTabs();
   showKnockoutTab();
+  ensureRealTableForPrediction();
   updateProgress();
 }
 
@@ -6871,6 +6873,17 @@ function maybeAutoUpdateRealTableOnline(force = false) {
   const due = force || !lastMs || (Date.now() - lastMs > AUTO_SCORE_CHECK_INTERVAL_MS);
   if (!due) return;
   updateRealTableOnline();
+}
+
+let _realTableFetchInFlight = null;
+function ensureRealTableForPrediction() {
+  // When users go straight to "وارد کردن پیش‌بینی‌ها" they may never open the
+  // results/table tabs, so force-load table.json here as well. This makes the
+  // knockout fixtures and group qualification points available in prediction mode.
+  if (_realTableFetchInFlight) return _realTableFetchInFlight;
+  _realTableFetchInFlight = updateRealTableOnline()
+    .finally(() => { _realTableFetchInFlight = null; });
+  return _realTableFetchInFlight;
 }
 
 async function updateRealTableOnline(btn) {
