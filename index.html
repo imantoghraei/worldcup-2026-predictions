@@ -347,10 +347,9 @@ button{cursor:pointer;font-family:inherit}
   <div class="nav-tabs" id="view-tabs" style="display:none">
     <button class="tab-btn active" id="tab-real" onclick="showRealTab()">نتایج واقعی</button>
     <button class="tab-btn" id="tab-compare" onclick="showResults()">مقایسه</button>
-    <button class="tab-btn" id="tab-real-table" onclick="showRealTableTab()">جدول واقعی</button>
     <button class="tab-btn" id="tab-rank" onclick="showRankTab()">جدول پیش‌بینی‌گران</button>
     <button class="tab-btn" id="tab-daily" onclick="showDailyTab()">جدول روزانه</button>
-    <button class="tab-btn" id="tab-groups-v" onclick="showGroupsTab()">گروه‌ها</button>
+    <button class="tab-btn" id="tab-group-stage" onclick="showGroupStageResultsTab()">نتایج مرحله گروهی</button>
   </div>
 
   <div class="content" id="match-list" style="display: block;"><div class="date-sep"><span>📅 پنج‌شنبه 11 ژوئن</span></div><div class="match-card done" id="card-0">
@@ -5520,6 +5519,12 @@ function scrollToRankTop() {
   }, 80);
 }
 
+function scrollToGroupStageTop() {
+  setTimeout(() => {
+    if (window.scrollTo) window.scrollTo({ top: 0, behavior: 'auto' });
+  }, 80);
+}
+
 function allMatchItems() {
   return [
     ...MATCHES.map(m => ({...m, kind:'group'})),
@@ -6588,10 +6593,13 @@ function filterTab(f) {
 }
 
 function showGroupsTab() {
+  if (appMode === 'view') {
+    showGroupStageResultsTab();
+    return;
+  }
   currentFilter = 'groups';
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  const btnId = appMode === 'view' ? 'tab-groups-v' : 'tab-groups';
-  const btn = document.getElementById(btnId);
+  const btn = document.getElementById('tab-groups');
   if (btn) btn.classList.add('active');
   hideAllViews();
   document.getElementById('groups-view').style.display = 'block';
@@ -6911,7 +6919,8 @@ async function updateRealTableOnline(btn) {
     const groupsDone = realTableGroupsWithTopTwo().length;
     const thirdsDone = realBestThirdTeams().length;
 
-    if (currentFilter === 'real-table') buildRealTableView();
+    if (currentFilter === 'group-stage') buildGroupStageResultsView();
+    else if (currentFilter === 'real-table') buildRealTableView();
     else if (currentFilter === 'rank') { buildRankView(); scrollToRankTop(); }
     else if (currentFilter === 'ko') buildKnockoutView(currentKoRound);
     else if (currentFilter === 'real') { buildRealView(); scrollToCurrentDateIn('real-view'); }
@@ -6967,6 +6976,7 @@ async function fetchPredictionsOnline(silent = true, btn = null) {
       if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); scrollToCurrentDateIn('results-list'); }
       else if (currentFilter === 'rank') { buildRankView(); scrollToRankTop(); }
       else if (currentFilter === 'daily') buildDailyView();
+      else if (currentFilter === 'group-stage') buildGroupStageResultsView();
       else if (currentFilter === 'real-table') buildRealTableView();
       else if (currentFilter === 'groups') buildGroupsView(currentPlayer);
     }
@@ -7132,14 +7142,40 @@ function showDailyTab() {
 }
 
 function showRealTableTab() {
-  currentFilter = 'real-table';
+  showGroupStageResultsTab();
+}
+
+function buildGroupStageResultsView() {
+  const realTableEl = document.getElementById('real-table-view');
+  const groupsEl = document.getElementById('groups-view');
+  if (realTableEl && groupsEl && realTableEl.parentNode === groupsEl.parentNode && realTableEl.nextElementSibling !== groupsEl) {
+    groupsEl.parentNode.insertBefore(realTableEl, groupsEl);
+  }
+  realTableEl.style.display = 'block';
+  groupsEl.style.display = 'block';
+  buildRealTableView();
+  buildGroupsView(currentPlayer);
+  addGroupPredictionsHeading();
+}
+
+function addGroupPredictionsHeading() {
+  const groupsEl = document.getElementById('groups-view');
+  if (!groupsEl || groupsEl.querySelector('.group-prediction-heading')) return;
+  groupsEl.insertAdjacentHTML('afterbegin',
+    '<div class="real-table-note group-prediction-heading"><b>جدول‌های پیش‌بینی کاربران</b><br>جدول‌های زیر بر اساس پیش‌بینی‌های مرحله گروهی هر بازیکن ساخته شده‌اند.</div>'
+  );
+}
+
+function showGroupStageResultsTab() {
+  currentFilter = 'group-stage';
   document.getElementById('results').style.display = 'none';
   document.getElementById('main').style.display = 'block';
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-real-table').classList.add('active');
+  const tab = document.getElementById('tab-group-stage');
+  if (tab) tab.classList.add('active');
   hideAllViews();
-  document.getElementById('real-table-view').style.display = 'block';
-  buildRealTableView();
+  buildGroupStageResultsView();
+  scrollToGroupStageTop();
   maybeAutoUpdateRealTableOnline(true);
 }
 
@@ -7773,13 +7809,13 @@ function rankTeams(teams, preds, groupMatches) {
 }
 
 function buildGroupsView(viewPlayer) {
-  const vp = viewPlayer || currentPlayer;
   const container = document.getElementById('groups-view');
   container.innerHTML = '';
 
   // نوار انتخاب بازیکن
   const allWithData = Object.keys(allPredictions).filter(p => Object.keys(allPredictions[p]||{}).length > 0);
-  const playersToShow = [...new Set([currentPlayer, ...allWithData])];
+  const playersToShow = [...new Set([currentPlayer, ...allWithData].filter(Boolean))];
+  const vp = viewPlayer || currentPlayer || allWithData[0] || null;
   if (playersToShow.length > 1) {
     const bar = document.createElement('div');
     bar.className = 'grp-player-bar';
@@ -7788,10 +7824,18 @@ function buildGroupsView(viewPlayer) {
       const tag = document.createElement('div');
       tag.className = 'grp-ptag' + (p === vp ? ' active' : '');
       tag.textContent = (pobj ? pobj.avatar + ' ' : '') + (pobj ? pobj.faName : p);
-      tag.onclick = () => buildGroupsView(p);
+      tag.onclick = () => {
+        buildGroupsView(p);
+        if (currentFilter === 'group-stage') addGroupPredictionsHeading();
+      };
       bar.appendChild(tag);
     });
     container.appendChild(bar);
+  }
+
+  if (!vp) {
+    container.innerHTML += '<div style="text-align:center;color:var(--dim);padding:3rem 1rem">هنوز پیش‌بینی‌ای برای نمایش جدول گروهی وجود ندارد.</div>';
+    return;
   }
 
   const preds = allPredictions[vp] || {};
@@ -8043,6 +8087,7 @@ function refreshAfterPredictionImport() {
   if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); }
   else if (currentFilter === 'rank') { buildRankView(); scrollToRankTop(); }
   else if (currentFilter === 'daily') buildDailyView();
+  else if (currentFilter === 'group-stage') buildGroupStageResultsView();
   else if (currentFilter === 'groups') buildGroupsView(currentPlayer);
   else if (currentFilter === 'ko') buildKnockoutView(currentKoRound);
 }

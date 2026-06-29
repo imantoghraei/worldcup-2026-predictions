@@ -198,13 +198,201 @@ const FA_DAYS = {
 };
 const FA_MONTHS = {"Jun":"ژوئن","Jul":"ژوئیه"};
 const FA_ROUNDS = {R32:'یک‌سی‌ودوم',R16:'یک‌شانزدهم',QF:'ربع‌نهایی',SF:'نیمه‌نهایی','3rd':'مقام سوم',Final:'فینال'};
+const GROUP_LETTERS = 'ABCDEFGHIJKL'.split('');
 
 // ⬇️ برای دکمه‌ی «بارگذاری قبلی»: آدرس results.json فعلی شما (اختیاری)
 const EXISTING_URL = 'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/results.json';
+const EXISTING_TABLE_URLS = [
+  'table.json',
+  'https://raw.githubusercontent.com/imantoghraei/worldcup-2026-predictions/main/table.json'
+];
 
 function faDate(d){const p=d.split(' ');return (FA_DAYS[p[0]]||p[0])+' '+p[2]+' '+(FA_MONTHS[p[1]]||p[1]);}
-function teamLabel(code){ // for KO slots like "1A","W73"
-  return code;
+
+let realTable = {groups:{}, bestThirds:[]};
+
+function groupTeamsMap(){
+  const map={};
+  GROUP_LETTERS.forEach(g=>{map[g]=[];});
+  MATCHES.forEach(m=>{
+    [m.t1,m.t2].forEach(team=>{
+      if(!map[m.grp].includes(team)) map[m.grp].push(team);
+    });
+  });
+  return map;
+}
+function teamGroupMap(){
+  const out={};
+  Object.entries(groupTeamsMap()).forEach(([grp,teams])=>{
+    teams.forEach(team=>{out[team]=grp;});
+  });
+  return out;
+}
+function normalizeTeamKey(name){
+  return String(name||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .replace(/&amp;/g,'and')
+    .replace(/&/g,'and')
+    .replace(/[^a-z0-9]+/g,'');
+}
+function canonicalTeamKey(name){
+  const key=normalizeTeamKey(name);
+  const aliases={
+    southkorea:'repofkorea',korearepublic:'repofkorea',republicofkorea:'repofkorea',
+    czechrepublic:'czechrep',czechia:'czechrep',
+    unitedstates:'usa',unitedstatesofamerica:'usa',usmnt:'usa',
+    iran:'iriran',islamicrepublicofiran:'iriran',
+    coteivoire:'ivorycoast',cotedivoire:'ivorycoast',ctedivoire:'ivorycoast',
+    bosniaandherzegovina:'bosniaherzeg',bosniaherzegovina:'bosniaherzeg',bosniaherzeg:'bosniaherzeg',
+    demrepcongo:'drcongo',democraticrepublicofthecongo:'drcongo',congodr:'drcongo',drcongo:'drcongo',
+    caboverde:'capeverde',turkiye:'turkey',curacao:'curacao'
+  };
+  return aliases[key]||key;
+}
+function normalizeTableTeam(team){
+  if(!team) return null;
+  const allTeams=Object.values(groupTeamsMap()).flat();
+  const exact=allTeams.find(t=>t===team);
+  if(exact) return exact;
+  const key=canonicalTeamKey(team);
+  return allTeams.find(t=>canonicalTeamKey(t)===key)||null;
+}
+function sanitizeRealTable(data){
+  const clean={groups:{},bestThirds:[]};
+  const sourceGroups=data&&data.groups&&typeof data.groups==='object'?data.groups:{};
+  const validGroups=groupTeamsMap();
+  GROUP_LETTERS.forEach(grp=>{
+    const raw=Array.isArray(sourceGroups[grp])?sourceGroups[grp]:[];
+    const seen=new Set();
+    const teams=raw
+      .map(normalizeTableTeam)
+      .filter(team=>team&&validGroups[grp].includes(team)&&!seen.has(team)&&seen.add(team))
+      .slice(0,4);
+    if(teams.length) clean.groups[grp]=teams;
+  });
+  const seenThirds=new Set();
+  const rawThirds=Array.isArray(data&&data.bestThirds)?data.bestThirds:[];
+  rawThirds.forEach(team=>{
+    const normalized=normalizeTableTeam(team);
+    if(normalized&&!seenThirds.has(normalized)){
+      clean.bestThirds.push(normalized);
+      seenThirds.add(normalized);
+    }
+  });
+  clean.bestThirds=clean.bestThirds.slice(0,8);
+  return clean;
+}
+function realTableGroupOrder(grp){
+  return realTable.groups&&Array.isArray(realTable.groups[grp])?realTable.groups[grp]:[];
+}
+function realTableThirdTeam(grp){
+  const order=realTableGroupOrder(grp);
+  return order.length>=3?order[2]:null;
+}
+function realTableTeamPosition(team){
+  for(const grp of GROUP_LETTERS){
+    const idx=realTableGroupOrder(grp).indexOf(team);
+    if(idx!==-1) return {grp:grp,pos:idx};
+  }
+  return null;
+}
+function realBestThirdTeams(){
+  return (realTable.bestThirds||[]).filter(team=>{
+    const info=realTableTeamPosition(team);
+    return info&&info.pos===2;
+  }).slice(0,8);
+}
+
+const THIRD_SLOTS = {
+  74:'ABCDF', 77:'CDFGH', 79:'CEFHI', 80:'EHIJK',
+  82:'AEHIJ', 81:'BEFIJ', 85:'EFGIJ', 87:'DEIJL'
+};
+const THIRD_ASSIGNMENT_BY_COMBO = {
+  BDEFIJKL: {
+    74:'D',
+    77:'F',
+    79:'E',
+    80:'K',
+    82:'I',
+    81:'B',
+    85:'J',
+    87:'L'
+  }
+};
+function computeThirdAssignment(){
+  const groupsByTeam=teamGroupMap();
+  const qualifying=realBestThirdTeams()
+    .map(name=>({name:name,grp:groupsByTeam[name]}))
+    .filter(t=>t.grp);
+  const byGroup={};
+  qualifying.forEach(t=>{byGroup[t.grp]=t.name;});
+  const comboKey=qualifying.map(t=>t.grp).sort().join('');
+  const official=THIRD_ASSIGNMENT_BY_COMBO[comboKey];
+  if(official){
+    const assignment={};
+    Object.entries(official).forEach(([mid,grp])=>{
+      if(byGroup[grp]) assignment[mid]=byGroup[grp];
+    });
+    return assignment;
+  }
+  const slots=Object.entries(THIRD_SLOTS)
+    .map(([mid,gs])=>({mid:+mid,groups:gs.split(''),eligible:qualifying.filter(t=>gs.includes(t.grp))}))
+    .sort((a,b)=>a.eligible.length-b.eligible.length);
+  const assignment={}, used=new Set();
+  slots.forEach(sl=>{
+    const avail=sl.eligible.filter(t=>!used.has(t.name));
+    if(avail.length){assignment[sl.mid]=avail[0].name;used.add(avail[0].name);}
+  });
+  return assignment;
+}
+function resolveSlot(slot){
+  if(/^[12][A-L]$/.test(slot)){
+    const pos=parseInt(slot[0],10)-1, grp=slot[1];
+    const order=realTableGroupOrder(grp);
+    return order[pos]||null;
+  }
+  if(slot.startsWith('3-')){
+    const m=KO.find(x=>x.s1===slot||x.s2===slot);
+    if(!m) return null;
+    const assignment=computeThirdAssignment();
+    return assignment[m.id]||null;
+  }
+  if(slot.startsWith('W')){
+    const mid=+slot.slice(1), m=KO.find(x=>x.id===mid);
+    const sc=scores[mid];
+    if(!m||!Array.isArray(sc)) return null;
+    const t1=resolveSlot(m.s1), t2=resolveSlot(m.s2);
+    if(sc[0]>sc[1]) return t1;
+    if(sc[1]>sc[0]) return t2;
+    return null;
+  }
+  if(slot.startsWith('RU')){
+    const mid=+slot.slice(2), m=KO.find(x=>x.id===mid);
+    const sc=scores[mid];
+    if(!m||!Array.isArray(sc)) return null;
+    const t1=resolveSlot(m.s1), t2=resolveSlot(m.s2);
+    if(sc[0]>sc[1]) return t2;
+    if(sc[1]>sc[0]) return t1;
+    return null;
+  }
+  return null;
+}
+function slotLabel(slot){
+  if(/^1[A-L]$/.test(slot)) return 'اول گروه '+slot[1];
+  if(/^2[A-L]$/.test(slot)) return 'دوم گروه '+slot[1];
+  if(slot.startsWith('3-')) return 'سوم برتر';
+  if(slot.startsWith('W')) return 'برنده م.'+slot.slice(1);
+  if(slot.startsWith('RU')) return 'بازنده م.'+slot.slice(2);
+  return slot;
+}
+function slotTeamInfo(slot){
+  const team=resolveSlot(slot);
+  if(team) return {name:FA_TEAMS[team]||team, flag:FLAGS[team]||'🏳'};
+  return {name:slotLabel(slot), flag:'🏁'};
+}
+function teamLabel(code){
+  return slotTeamInfo(code).name;
 }
 
 let scores = {}; // { id: [s1,s2] }
@@ -225,7 +413,8 @@ function render(){
   rounds.forEach(r=>{
     addSec(c,'🏆 '+(FA_ROUNDS[r]||r));
     KO.filter(m=>m.round===r).forEach(m=>{
-      c.appendChild(card(m,m.s1,m.s2,'🏁','🏁',FA_ROUNDS[m.round]||m.round));
+      const team1=slotTeamInfo(m.s1), team2=slotTeamInfo(m.s2);
+      c.appendChild(card(m,team1.name,team2.name,team1.flag,team2.flag,FA_ROUNDS[m.round]||m.round));
     });
   });
 }
@@ -259,7 +448,10 @@ function adj(id,idx,delta){ if(!scores[id])scores[id]=[0,0]; let v=scores[id][id
 function refresh(id){
   const all=[...MATCHES,...KO]; const m=all.find(x=>x.id===id);
   let n1,n2,f1,f2,tag;
-  if(koIds.has(id)){ n1=m.s1;n2=m.s2;f1='🏁';f2='🏁';tag=FA_ROUNDS[m.round]||m.round; }
+  if(koIds.has(id)){
+    const team1=slotTeamInfo(m.s1), team2=slotTeamInfo(m.s2);
+    n1=team1.name;n2=team2.name;f1=team1.flag;f2=team2.flag;tag=FA_ROUNDS[m.round]||m.round;
+  }
   else { n1=FA_TEAMS[m.t1]||m.t1;n2=FA_TEAMS[m.t2]||m.t2;f1=FLAGS[m.t1]||'🏳';f2=FLAGS[m.t2]||'🏳';tag='گروه '+m.grp; }
   document.getElementById('c-'+id).replaceWith(card(m,n1,n2,f1,f2,tag));
 }
@@ -275,7 +467,9 @@ function copyJSON(){
   const ta=document.getElementById('out');
   if(!ta.value){ genJSON(); }
   ta.style.display='block';
-  navigator.clipboard?.writeText(ta.value).then(()=>toast('کپی شد!'),()=>{ta.select();document.execCommand('copy');toast('کپی شد!');});
+  const clip=(typeof navigator!=='undefined'&&navigator.clipboard)?navigator.clipboard:null;
+  if(clip&&clip.writeText) clip.writeText(ta.value).then(()=>toast('کپی شد!'),()=>{ta.select();document.execCommand('copy');toast('کپی شد!');});
+  else {ta.select();document.execCommand('copy');toast('کپی شد!');}
 }
 async function loadExisting(){
   try{
@@ -286,7 +480,23 @@ async function loadExisting(){
     else toast('فایل خالی بود');
   }catch(e){ toast('بارگذاری ناموفق (آدرس را بررسی کنید)'); }
 }
+async function loadTableJSON(){
+  for(const url of EXISTING_TABLE_URLS){
+    try{
+      const sep=url.includes('?')?'&':'?';
+      const r=await fetch(url+sep+'t='+Date.now(),{cache:'no-store'});
+      if(!r.ok) throw 0;
+      const d=await r.json();
+      realTable=sanitizeRealTable(d||{});
+      render();
+      toast('table.json بارگذاری شد');
+      return;
+    }catch(e){}
+  }
+  toast('بارگذاری table.json ناموفق بود');
+}
 function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2200);}
 render();
+loadTableJSON();
 </script>
 </body></html>
