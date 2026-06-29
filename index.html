@@ -103,6 +103,12 @@ button{cursor:pointer;font-family:inherit}
 .rsb-bar{display:flex;height:22px;border-radius:8px;overflow:hidden;gap:2px;background:var(--card2)}
 .rsb-seg{display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:rgba(255,255,255,.92);overflow:hidden;white-space:nowrap;min-width:0;transition:width .3s}
 .rsb-legend{display:flex;justify-content:space-between;font-size:.65rem;font-weight:700;margin-top:.3rem}
+.compare-real-card{margin-bottom:.65rem}
+.compare-picks-wrap{margin-top:.75rem;padding-top:.65rem;border-top:1px solid var(--border)}
+.compare-picks-title{font-size:.72rem;color:var(--gold);font-weight:800;margin-bottom:.45rem}
+.compare-picks{display:flex;flex-wrap:wrap;gap:.4rem}
+.compare-real-card .rcard-stat{margin-top:.65rem}
+.pen-readonly{margin-top:.55rem;background:rgba(240,165,0,.08);border:1px dashed rgba(240,165,0,.32);border-radius:10px;padding:.45rem .6rem;color:var(--gold);font-size:.7rem;font-weight:800;text-align:center}
 
 /* ── دکمه‌های انتخاب حالت (خوش‌آمد) ── */
 .wmode-wrap{display:flex;gap:.7rem;width:100%;max-width:300px;margin:1.5rem 0 .5rem}
@@ -345,8 +351,7 @@ button{cursor:pointer;font-family:inherit}
   </div>
   <!-- تب‌های مشاهده -->
   <div class="nav-tabs" id="view-tabs" style="display:none">
-    <button class="tab-btn active" id="tab-real" onclick="showRealTab()">نتایج واقعی</button>
-    <button class="tab-btn" id="tab-compare" onclick="showResults()">مقایسه</button>
+    <button class="tab-btn active" id="tab-compare" onclick="showResults()">مقایسه</button>
     <button class="tab-btn" id="tab-rank" onclick="showRankTab()">جدول پیش‌بینی‌گران</button>
     <button class="tab-btn" id="tab-daily" onclick="showDailyTab()">جدول روزانه</button>
     <button class="tab-btn" id="tab-group-stage" onclick="showGroupStageResultsTab()">نتایج مرحله گروهی</button>
@@ -6377,7 +6382,7 @@ function enterViewMode() {
   document.getElementById('welcome').style.display = 'none';
   document.getElementById('main').style.display = 'block';
   showViewTabs();
-  showRealTab();
+  showResults();
   maybeAutoUpdateRealScoresOnline(true);
   fetchPredictionsOnline();
 }
@@ -6823,7 +6828,7 @@ function addOnlineScorePanel(container) {
   panel.innerHTML = `
     <div class="online-score-title">🌐 به‌روزرسانی خودکار نتایج</div>
     <div class="online-score-text">
-      برنامه هنگام باز شدن سایت و همچنین هنگام ورود به تب‌های «نتایج واقعی» و «جدول پیش‌بینی‌گران» هر ۱۵ دقیقه یک‌بار نتایج اینترنتی را بررسی می‌کند. این دکمه هم بررسی دستی را انجام می‌دهد.
+      برنامه هنگام باز شدن سایت و همچنین هنگام ورود به تب‌های «مقایسه» و «جدول پیش‌بینی‌گران» هر ۱۵ دقیقه یک‌بار نتایج اینترنتی را بررسی می‌کند. این دکمه هم بررسی دستی را انجام می‌دهد.
       <br>آخرین بررسی: <strong>${last}</strong>
     </div>
     <div class="online-score-actions">
@@ -7102,17 +7107,7 @@ function clearRealScores() {
 }
 
 function showRealTab() {
-  currentFilter = 'real';
-  document.getElementById('results').style.display = 'none';
-  document.getElementById('main').style.display = 'block';
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-real').classList.add('active');
-  hideAllViews();
-  document.getElementById('real-view').style.display = 'block';
-  buildRealView();
-  scrollToCurrentDateIn('real-view');
-  maybeAutoUpdateRealScoresOnline(true);
-  ensureRealTableOnline();
+  showResults();
 }
 
 function showRankTab() {
@@ -8218,6 +8213,37 @@ function compareTeamInfo(m) {
   };
 }
 
+function compareRealScoreHtml(realScore) {
+  if (!realScore) return '<div class="real-pending">در انتظار نتیجه</div>';
+  return `<div class="score-row">
+    <div class="sval set">${realScore[1]}</div>
+    <span style="color:var(--dim);font-size:.9rem;margin:0 .1rem">:</span>
+    <div class="sval set">${realScore[0]}</div>
+  </div>`;
+}
+
+function comparePenaltyHtml(info, real) {
+  const sc = scoreArray(real);
+  if (!sc || sc[0] !== sc[1] || !real || Array.isArray(real)) return '';
+  const pw = real.pw;
+  if (pw !== 0 && pw !== 1) return '';
+  const winner = pw === 0 ? `${info.f1} ${info.fa1}` : `${info.f2} ${info.fa2}`;
+  return `<div class="pen-readonly">برنده پنالتی: ${escapeHtml(winner)}</div>`;
+}
+
+function comparePickPillsHtml(picks, real, isKo) {
+  return picks.map(({player, pick}) => {
+    const pobj = PLAYERS.find(x => x.name === player);
+    const label = pobj ? `${pobj.avatar} ${pobj.faName}` : playerDisplayName(player);
+    const pts = calcScore(pick, real, isKo);
+    const ptsTxt = pts !== null ? ` <span class="pts-badge p${pts}" style="margin-right:0">★${pts}</span>` : '';
+    return `<div class="ppick${player === currentPlayer ? ' highlight' : ''}">
+      <span class="pname">${escapeHtml(label)}:</span>
+      <span class="pscore">${Number(pick[1])}–${Number(pick[0])}</span>${ptsTxt}
+    </div>`;
+  }).join('');
+}
+
 function buildResultsList() {
   const list = document.getElementById('results-list');
   list.innerHTML = '';
@@ -8250,10 +8276,8 @@ function buildResultsList() {
     const realScore = scoreArray(real);
 
     const card = document.createElement('div');
-    card.className = 'rcard';
-    // در رابط فارسی (RTL)، تیم‌ها برعکس نمایش داده می‌شوند:
-    // fa2 (t2) سمت راست، fa1 (t1) سمت چپ — پس امتیاز را هم معکوس نشان می‌دهیم
-    const realStr = realScore ? `<span style="color:var(--gold);font-weight:800;font-size:.8rem;direction:ltr"> (نتیجه: ${realScore[0]}–${realScore[1]})</span>` : '';
+    card.className = `real-card compare-real-card${realScore ? ' recorded' : ''}`;
+    const tagLabel = isKo ? (FA_ROUNDS[m.round] || m.round) : `گروه ${m.grp}`;
 
     const total  = picks.length;
     const t1w    = picks.filter(({pick}) => pick[0] > pick[1]).length;
@@ -8271,19 +8295,29 @@ function buildResultsList() {
     const t2lcol = ro === 't2'   ? 'var(--gold)' : '#5dade2';
 
     card.innerHTML = `
-      <div class="rcard-match">${info.meta}</div>
-      <div class="rcard-teams">${info.f1} ${info.fa1} در برابر ${info.fa2} ${info.f2}${realStr}</div>
-      <div class="rcard-picks">${
-        picks.map(({player, pick}) => {
-          const pobj = PLAYERS.find(x => x.name === player);
-          const pts = calcScore(pick, real, isKo);
-          const ptsTxt = pts !== null ? ` <span class="pts-badge p${pts}" style="margin-right:0">★${pts}</span>` : '';
-          return `<div class="ppick${player === currentPlayer ? ' highlight' : ''}">
-            <span class="pname">${pobj ? pobj.avatar : ''}${pobj ? pobj.faName : player}:</span>
-            <span class="pscore">${pick[1]}–${pick[0]}</span>${ptsTxt}
-          </div>`;
-        }).join('')
-      }</div>
+      <div class="match-meta">
+        <span>${m.time}</span>
+        <span class="group-tag">${tagLabel}</span>
+      </div>
+      <div class="teams-row">
+        <div class="team-block">
+          <span class="flag">${info.f1}</span>
+          <span class="tname">${escapeHtml(info.fa1)}</span>
+        </div>
+        <div class="score-col">
+          <div class="vs">نتیجه نهایی</div>
+          ${compareRealScoreHtml(realScore)}
+        </div>
+        <div class="team-block">
+          <span class="flag">${info.f2}</span>
+          <span class="tname">${escapeHtml(info.fa2)}</span>
+        </div>
+      </div>
+      ${comparePenaltyHtml(info, real)}
+      <div class="compare-picks-wrap">
+        <div class="compare-picks-title">پیش‌بینی کاربران</div>
+        <div class="compare-picks">${comparePickPillsHtml(picks, real, isKo)}</div>
+      </div>
       <div class="rcard-stat">
         <div class="rsb-bar">
           <div class="rsb-seg" style="width:${t2pct}%;background:${t2col}">${t2pct > 14 ? t2pct+'%' : ''}</div>
