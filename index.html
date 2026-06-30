@@ -8990,7 +8990,7 @@ function buildConsensusCard(container) {
   }
 
   // stubborn section
-  html += `<div class="cmp-section"><div class="cmp-section-title">🐐 لجباز بی‌دلیل — تنها مخالف بود و اشتباه کرد</div>`;
+  html += `<div class="cmp-section"><div class="cmp-section-title">😤 لجباز بی‌دلیل — تنها مخالف بود و اشتباه کرد</div>`;
   if (stubborns.length === 0) {
     html += '<div style="color:var(--dim);font-size:.75rem;padding:.4rem 0">فعلاً لجبازی ثبت نشده!</div>';
   } else {
@@ -8999,7 +8999,7 @@ function buildConsensusCard(container) {
         <div class="cmp-match-info">${escapeHtml(s.f1)} ${escapeHtml(s.t1Name)} ${fa(s.realScore[0])}-${fa(s.realScore[1])} ${escapeHtml(s.t2Name)} ${escapeHtml(s.f2)}
           <div class="cmp-match-detail">پیش‌بینی ${escapeHtml(pdn(s.player))}: ${fa(s.predScore[0])}-${fa(s.predScore[1])} · ${fa(s.majorityCount)} نفر درست گفتن</div>
         </div>
-        <span class="cmp-player-tag stubborn">🐐 لجباز</span>
+        <span class="cmp-player-tag stubborn">😤 لجباز</span>
       </div>`;
     });
   }
@@ -9012,10 +9012,10 @@ function buildConsensusCard(container) {
     [...allNames].forEach(name => {
       const gc = geniusCount[name] || 0;
       const sc = stubbornCount[name] || 0;
-      const label = gc > sc ? '🧠' : sc > gc ? '🐐' : '⚖️';
+      const label = gc > sc ? '🧠' : sc > gc ? '😤' : '⚖️';
       html += `<div class="cmp-pair">
         <div class="cmp-pair-names">${label} ${escapeHtml(pdn(name))}
-          <div class="cmp-pair-desc">🧠 نابغه: ${fa(gc)} بار · 🐐 لجباز: ${fa(sc)} بار</div>
+          <div class="cmp-pair-desc">🧠 نابغه: ${fa(gc)} بار · 😤 لجباز: ${fa(sc)} بار</div>
         </div>
         <div class="cmp-pair-stat">${fa(gc)}/${fa(gc + sc)}</div>
       </div>`;
