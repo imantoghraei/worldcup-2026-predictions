@@ -4691,16 +4691,16 @@ button{cursor:pointer;font-family:inherit}
         <span class="tname">آرژانتین</span>
       </div>
     </div></div><div style="text-align: center; color: var(--dim); padding: 1.5rem; font-size: 0.82rem;">🔒 مراحل حذفی پس از تکمیل نتایج گروهی قفل می‌شوند</div></div>
-  <div id="rank-view" style="display: none;"><div class="rank-summary">هنوز نتیجه‌ای در تب «نتایج» ثبت نشده است</div><div class="rank-card me">
+  <div id="rank-view" style="display: none;"><div class="rank-summary">هنوز نتیجه‌ای ثبت نشده است</div><div class="rank-card me">
       <div class="rank-pos">🥇</div>
       <div class="rank-avatar">👤</div>
       <div class="rank-info">
         <div class="rank-name">ایمان (شما)</div>
         <div class="rank-breakdown">
-          <span>🎯 دقیق×۴: 0</span>
-          <span>📐 تفاضل×۲: 0</span>
+          <span>🎯 دقیق: 0</span>
+          <span>📐 تفاضل: 0</span>
           <span>✅ برنده: 0</span>
-          <span>🎟️ صعود×۲: 0 (0)</span>
+          <span>🎟️ صعود: 0 (0)</span>
           <span>❌ اشتباه: 0</span>
         </div>
       </div>
@@ -5294,7 +5294,6 @@ function buildBadgeLeaders(rankings) {
     gd: badgeLeaderSet(rows, r => r.gd, { min: 1 }),
     winner: badgeLeaderSet(rows, r => r.winner, { min: 1 }),
     qual: badgeLeaderSet(rows, r => r.qual || 0, { min: 1 }),
-    ko: badgeLeaderSet(rows, r => r.profile.koCount, { min: 1 }),
     draws: badgeLeaderSet(rows, r => r.profile.draws, { min: 2, filter: r => r.profile.groupCount >= 20 }),
     antiDraw: badgeLeaderSet(rows, r => r.profile.draws, { minimize: true, max: 3, filter: r => r.profile.groupCount >= 40 }),
     offense: badgeLeaderSet(rows, r => Number(r.profile.avgGoals.toFixed(3)), { min: 3.1, filter: r => r.profile.groupCount >= 20 }),
@@ -5324,7 +5323,6 @@ function buildPredictionBadges(playerName, totals, leaders) {
   if (isBadgeLeader(leaders, 'gd', playerName)) add('📐', 'استاد تفاضل گل', 'blue', `${totals.gd} بار تفاضل گل درست؛ صدر این معیار`);
   if (isBadgeLeader(leaders, 'winner', playerName)) add('✅', 'شکارچی برنده', 'green', `${totals.winner} برنده درست؛ بیشترین بین بازیکنان`);
   if (isBadgeLeader(leaders, 'qual', playerName)) add('🎟️', 'پیش‌گوی صعود', 'hot', `${totals.qual || 0} تیم صعودکننده درست؛ بهترین آمار صعود`);
-  if (isBadgeLeader(leaders, 'ko', playerName)) add('🏆', 'حذفی‌باز', 'hot', `${p.koCount} بازی حذفی پیش‌بینی شده؛ بیشترین تعداد`);
   if (isBadgeLeader(leaders, 'draws', playerName)) add('🤝', 'عاشق تساوی', 'blue', `${p.draws} تساوی در پیش‌بینی‌ها؛ بیشترین بین بازیکنان`);
   if (isBadgeLeader(leaders, 'antiDraw', playerName)) add('⚔️', 'ضد تساوی', 'red', `${p.draws} تساوی در ${p.groupCount} پیش‌بینی؛ کمترین بین بازیکنان پرکار`);
   if (isBadgeLeader(leaders, 'offense', playerName)) add('🔥', 'فوتبال هجومی', 'red', `میانگین ${p.avgGoals.toFixed(1)} گل؛ هجومی‌ترین نگاه`);
@@ -7582,7 +7580,7 @@ function buildRankView() {
   summary.className = 'rank-summary';
   summary.textContent = gradedCount > 0
     ? `نتایج ${gradedCount} بازی از ${MATCHES.length} بازی ثبت شده‌اند`
-    : 'هنوز نتیجه‌ای در تب «نتایج» ثبت نشده است';
+    : 'هنوز نتیجه‌ای ثبت نشده است';
   container.appendChild(summary);
 
   if (allPlayers.length === 0) {
@@ -7621,10 +7619,10 @@ function buildRankView() {
           ${moveHtml}
         </div>
         <div class="rank-breakdown">
-          <span>🎯 دقیق×۴: ${p.exact}</span>
-          <span>📐 تفاضل×۲: ${p.gd}</span>
+          <span>🎯 دقیق: ${p.exact}</span>
+          <span>📐 تفاضل: ${p.gd}</span>
           <span>✅ برنده: ${p.winner}</span>
-          <span>🎟️ صعود×۲: ${p.qual||0} (${p.qualPts||0})</span>
+          <span>🎟️ صعود: ${p.qual||0} (${p.qualPts||0})</span>
           <span>❌ اشتباه: ${p.zero}</span>
         </div>
         ${badgesHtml}
