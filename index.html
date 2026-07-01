@@ -109,6 +109,26 @@ button{cursor:pointer;font-family:inherit}
 .compare-picks{display:flex;flex-wrap:wrap;gap:.4rem}
 .compare-real-card .rcard-stat{margin-top:.65rem}
 .pen-readonly{margin-top:.55rem;background:rgba(240,165,0,.08);border:1px dashed rgba(240,165,0,.32);border-radius:10px;padding:.45rem .6rem;color:var(--gold);font-size:.7rem;font-weight:800;text-align:center}
+.pm-box{margin-top:.65rem;padding:.55rem .65rem;border:1px dashed rgba(39,174,96,.5);background:rgba(39,174,96,.06);border-radius:10px}
+.pm-title{font-size:.72rem;font-weight:900;color:var(--green-light);margin-bottom:.45rem;text-align:center}
+.pm-main{display:flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:800;color:var(--text)}
+.pm-team{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pm-main .pm-team:first-child{text-align:left}
+.pm-main .pm-team:last-child{text-align:right}
+.pm-score{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.15rem .55rem;font-weight:900;color:var(--green-light);direction:ltr;white-space:nowrap;flex-shrink:0}
+.pm-prob{text-align:center;font-size:.68rem;color:var(--dim);margin-top:.45rem;font-weight:700}
+.pm-odds{display:flex;justify-content:center;flex-wrap:wrap;gap:.6rem;font-size:.7rem;font-weight:800;margin-top:.35rem}
+.pm-box.bt{border-color:rgba(52,152,219,.5);background:rgba(52,152,219,.06)}
+.pm-box.bt .pm-title{color:#5dade2}
+.pm-box.bt .pm-score{color:#5dade2}
+.pm-verdict{text-align:center;font-size:.72rem;font-weight:900;margin-top:.4rem}
+.pm-verdict.ok{color:var(--green-light)}
+.pm-verdict.bad{color:#e74c3c}
+.proj-toggle{display:block;width:100%;margin:.1rem 0 .65rem;padding:.6rem;border-radius:10px;border:1.5px solid rgba(39,174,96,.45);background:rgba(39,174,96,.08);color:var(--green-light);font-weight:800;font-family:inherit;font-size:.82rem;cursor:pointer;transition:all .15s}
+.proj-toggle.on{border-color:var(--gold);background:rgba(240,165,0,.1);color:var(--gold)}
+.proj-note{text-align:center;font-size:.72rem;color:var(--gold);font-weight:700;margin-bottom:.55rem;line-height:1.6}
+.rank-card.proj{border-color:rgba(39,174,96,.35)}
+.rank-pts-lbl.proj{color:var(--green-light);font-weight:900}
 
 /* ── دکمه‌های انتخاب حالت (خوش‌آمد) ── */
 .wmode-wrap{display:flex;gap:.7rem;width:100%;max-width:300px;margin:1.5rem 0 .5rem}
@@ -335,14 +355,15 @@ button{cursor:pointer;font-family:inherit}
 .cmp-player-tag{font-size:.7rem;font-weight:800;white-space:nowrap}
 .cmp-player-tag.genius{color:var(--green-light)}
 .cmp-player-tag.stubborn{color:var(--red)}
-.curse-team{display:flex;align-items:center;gap:.5rem;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:.55rem .65rem;margin-bottom:.35rem}
-.curse-team.cursed{border-color:rgba(231,76,60,.4);background:rgba(231,76,60,.06)}
-.curse-team.blessed{border-color:rgba(39,174,96,.4);background:rgba(26,122,63,.06)}
-.curse-flag{font-size:1.2rem;flex-shrink:0}
-.curse-info{flex:1;min-width:0}
-.curse-team-name{font-size:.78rem;font-weight:800;color:var(--text)}
-.curse-stat{font-size:.65rem;color:var(--dim);margin-top:.1rem}
-.curse-rate{font-size:.8rem;font-weight:900;white-space:nowrap}
+.tt-team{display:flex;align-items:center;gap:.5rem;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:.55rem .65rem;margin-bottom:.35rem}
+.tt-team.top{border-color:rgba(240,165,0,.5);background:rgba(240,165,0,.08)}
+.tt-flag{font-size:1.2rem;flex-shrink:0}
+.tt-info{flex:1;min-width:0}
+.tt-name{font-size:.78rem;font-weight:800;color:var(--text)}
+.tt-stat{font-size:.65rem;color:var(--dim);margin-top:.1rem}
+.tt-pts{font-size:.8rem;font-weight:900;color:var(--gold);white-space:nowrap}
+.tt-joke{margin-top:.6rem;font-size:.72rem;line-height:1.75;color:var(--gold);font-weight:700;text-align:center;background:rgba(240,165,0,.06);border:1px dashed rgba(240,165,0,.35);border-radius:9px;padding:.5rem .6rem}
+.sig-badge{border-color:rgba(240,165,0,.4)!important;background:rgba(240,165,0,.12)!important;color:var(--gold)!important}
 .div-chart-wrap{direction:ltr;overflow-x:auto;padding:.25rem 0;scrollbar-width:thin}
 .div-svg{display:block;width:100%;min-width:500px;height:auto}
 .div-line{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
@@ -5309,11 +5330,9 @@ function predictionProfile(playerName) {
   const teamWins = {};
   let groupCount = 0, koCount = 0, draws = 0, highScores = 0, cleanSheets = 0, oneGoalGames = 0, totalGoals = 0, maxGoals = 0;
 
-  MATCHES.forEach(m => {
-    const pick = scoreArray(preds[m.id]);
-    if (!pick) return;
+  // شمارش پیش‌بینی‌ها برای هر بازی؛ tally هم گروهی و هم حذفی را در آمار نشان‌ها لحاظ می‌کند
+  const tally = (pick, t1, t2) => {
     const [s1, s2] = pick;
-    groupCount++;
     const goals = s1 + s2;
     totalGoals += goals;
     maxGoals = Math.max(maxGoals, goals);
@@ -5321,22 +5340,37 @@ function predictionProfile(playerName) {
     if (goals >= 4) highScores++;
     if (s1 === 0 || s2 === 0) cleanSheets++;
     if (Math.abs(s1 - s2) === 1) oneGoalGames++;
-    if (s1 > s2) teamWins[m.t1] = (teamWins[m.t1] || 0) + 1;
-    else if (s2 > s1) teamWins[m.t2] = (teamWins[m.t2] || 0) + 1;
+    if (s1 > s2) { if (t1) teamWins[t1] = (teamWins[t1] || 0) + 1; }
+    else if (s2 > s1) { if (t2) teamWins[t2] = (teamWins[t2] || 0) + 1; }
+  };
+
+  MATCHES.forEach(m => {
+    const pick = scoreArray(preds[m.id]);
+    if (!pick) return;
+    groupCount++;
+    tally(pick, m.t1, m.t2);
   });
 
-  Object.values(koPreds).forEach(v => { if (scoreArray(v)) koCount++; });
+  KO.forEach(m => {
+    const pick = scoreArray(koPreds[m.id]);
+    if (!pick) return;
+    koCount++;
+    tally(pick, resolveSlot(m.s1), resolveSlot(m.s2));
+  });
+
+  const predCount = groupCount + koCount;
   const favoriteTeam = Object.entries(teamWins).sort((a, b) => b[1] - a[1])[0];
 
   return {
+    predCount,
     groupCount,
     koCount,
     draws,
-    drawRate: groupCount ? draws / groupCount : 0,
+    drawRate: predCount ? draws / predCount : 0,
     highScores,
     cleanSheets,
     oneGoalGames,
-    avgGoals: groupCount ? totalGoals / groupCount : 0,
+    avgGoals: predCount ? totalGoals / predCount : 0,
     maxGoals,
     favoriteTeam: favoriteTeam ? { team: favoriteTeam[0], count: favoriteTeam[1] } : null
   };
@@ -5364,14 +5398,14 @@ function buildBadgeLeaders(rankings) {
     gd: badgeLeaderSet(rows, r => r.gd, { min: 1 }),
     winner: badgeLeaderSet(rows, r => r.winner, { min: 1 }),
     qual: badgeLeaderSet(rows, r => r.qual || 0, { min: 1 }),
-    draws: badgeLeaderSet(rows, r => r.profile.draws, { min: 2, filter: r => r.profile.groupCount >= 20 }),
-    antiDraw: badgeLeaderSet(rows, r => r.profile.draws, { minimize: true, max: 3, filter: r => r.profile.groupCount >= 40 }),
-    offense: badgeLeaderSet(rows, r => Number(r.profile.avgGoals.toFixed(3)), { min: 3.1, filter: r => r.profile.groupCount >= 20 }),
-    defense: badgeLeaderSet(rows, r => Number(r.profile.avgGoals.toFixed(3)), { minimize: true, max: 1.8, filter: r => r.profile.groupCount >= 20 }),
-    highScores: badgeLeaderSet(rows, r => r.profile.highScores, { min: 15, filter: r => r.profile.groupCount >= 20 }),
+    draws: badgeLeaderSet(rows, r => r.profile.draws, { min: 2, filter: r => r.profile.predCount >= 20 }),
+    antiDraw: badgeLeaderSet(rows, r => r.profile.draws, { minimize: true, max: 3, filter: r => r.profile.predCount >= 40 }),
+    offense: badgeLeaderSet(rows, r => Number(r.profile.avgGoals.toFixed(3)), { min: 3.1, filter: r => r.profile.predCount >= 20 }),
+    defense: badgeLeaderSet(rows, r => Number(r.profile.avgGoals.toFixed(3)), { minimize: true, max: 1.8, filter: r => r.profile.predCount >= 20 }),
+    highScores: badgeLeaderSet(rows, r => r.profile.highScores, { min: 15, filter: r => r.profile.predCount >= 20 }),
     cleanSheets: badgeLeaderSet(rows, r => r.profile.cleanSheets, {
       min: 38,
-      filter: r => r.profile.groupCount >= 60 && r.profile.cleanSheets / r.profile.groupCount >= .55
+      filter: r => r.profile.predCount >= 60 && r.profile.cleanSheets / r.profile.predCount >= .55
     }),
     favoriteTeam: badgeLeaderSet(rows, r => r.profile.favoriteTeam ? r.profile.favoriteTeam.count : 0, {
       min: 8,
@@ -5394,22 +5428,21 @@ function buildPredictionBadges(playerName, totals, leaders) {
   if (isBadgeLeader(leaders, 'winner', playerName)) add('✅', 'شکارچی برنده', 'green', `${totals.winner} برنده درست؛ بیشترین بین بازیکنان`);
   if (isBadgeLeader(leaders, 'qual', playerName)) add('🎟️', 'پیش‌گوی صعود', 'hot', `${totals.qual || 0} تیم صعودکننده درست؛ بهترین آمار صعود`);
   if (isBadgeLeader(leaders, 'draws', playerName)) add('🤝', 'عاشق تساوی', 'blue', `${p.draws} تساوی در پیش‌بینی‌ها؛ بیشترین بین بازیکنان`);
-  if (isBadgeLeader(leaders, 'antiDraw', playerName)) add('⚔️', 'ضد تساوی', 'red', `${p.draws} تساوی در ${p.groupCount} پیش‌بینی؛ کمترین بین بازیکنان پرکار`);
+  if (isBadgeLeader(leaders, 'antiDraw', playerName)) add('⚔️', 'ضد تساوی', 'red', `${p.draws} تساوی در ${p.predCount} پیش‌بینی؛ کمترین بین بازیکنان پرکار`);
   if (isBadgeLeader(leaders, 'offense', playerName)) add('🔥', 'فوتبال هجومی', 'red', `میانگین ${p.avgGoals.toFixed(1)} گل؛ هجومی‌ترین نگاه`);
   if (isBadgeLeader(leaders, 'defense', playerName)) add('🧱', 'دیوار دفاعی', 'blue', `میانگین ${p.avgGoals.toFixed(1)} گل؛ محتاط‌ترین نگاه`);
   if (isBadgeLeader(leaders, 'highScores', playerName)) add('🎲', 'ریسک‌پذیر', 'red', `${p.highScores} بازی ۴ گل یا بیشتر؛ بالاترین عدد`);
-  if (isBadgeLeader(leaders, 'cleanSheets', playerName)) add('🧤', 'دروازه‌بسته‌بین', 'green', `${p.cleanSheets} بازی از ${p.groupCount} پیش‌بینی‌اش کلین‌شیت داشته؛ سخت‌گیرانه‌ترین دفاع`);
+  if (isBadgeLeader(leaders, 'cleanSheets', playerName)) add('🧤', 'دروازه‌بسته‌بین', 'green', `${p.cleanSheets} بازی از ${p.predCount} پیش‌بینی‌اش کلین‌شیت داشته؛ سخت‌گیرانه‌ترین دفاع`);
   if (isBadgeLeader(leaders, 'favoriteTeam', playerName) && p.favoriteTeam) add('❤️', `هوادار ${teamFa(p.favoriteTeam.team)}`, 'hot', `${p.favoriteTeam.count} برد برای این تیم؛ قوی‌ترین علاقه در پیش‌بینی‌ها`);
 
   return badges.slice(0, 5);
 }
 
-function renderPredictionBadges(playerName, totals, leaders) {
+function renderPredictionBadges(playerName, totals, leaders, extra = '') {
   const badges = buildPredictionBadges(playerName, totals, leaders);
-  if (!badges.length) return '';
-  return `<div class="rank-badges">${
-    badges.map(b => `<button type="button" class="fun-badge ${escapeHtml(b.cls || '')}" onclick="showBadgeTip(event)" aria-label="${escapeHtml((b.title || '') + ': ' + (b.desc || b.title))}"><span>${b.icon}</span>${escapeHtml(b.title)}<span class="badge-tip" role="tooltip">${escapeHtml(b.desc || b.title)}</span></button>`).join('')
-  }</div>`;
+  const buttons = badges.map(b => `<button type="button" class="fun-badge ${escapeHtml(b.cls || '')}" onclick="showBadgeTip(event)" aria-label="${escapeHtml((b.title || '') + ': ' + (b.desc || b.title))}"><span>${b.icon}</span>${escapeHtml(b.title)}<span class="badge-tip" role="tooltip">${escapeHtml(b.desc || b.title)}</span></button>`).join('') + (extra || '');
+  if (!buttons) return '';
+  return `<div class="rank-badges">${buttons}</div>`;
 }
 
 function showBadgeTip(event) {
@@ -7663,6 +7696,18 @@ function renderLast10Dots(playerName) {
   return `<div class="last10-wrap">${dots}</div>`;
 }
 
+let showProjTable = false;
+function toggleProjTable() {
+  showProjTable = !showProjTable;
+  buildRankView();
+}
+
+function projMoveHtml(delta) {
+  if (delta > 0) return `<span class="rank-move up">▲ ${fa(delta)}</span>`;
+  if (delta < 0) return `<span class="rank-move down">▼ ${fa(-delta)}</span>`;
+  return `<span class="rank-move same">—</span>`;
+}
+
 function buildRankView() {
   const container = document.getElementById('rank-view');
   container.innerHTML = '';
@@ -7695,16 +7740,50 @@ function buildRankView() {
 
   const rankContext = getLeaderboardContext(rankings);
   const badgeLeaders = buildBadgeLeaders(rankings);
-  const drama = buildLeaderboardDramaCard(rankings, rankContext, gradedCount);
+  const projection = poissonMatchdayProjection();
+
+  // دکمهٔ ضامن: نمایشِ «جدولِ احتمالیِ امشب» بر اساسِ پیش‌بینیِ پواسون
+  if (projection) {
+    const toggle = document.createElement('button');
+    toggle.className = 'proj-toggle' + (showProjTable ? ' on' : '');
+    toggle.onclick = toggleProjTable;
+    toggle.innerHTML = showProjTable
+      ? '↩️ بازگشت به جدولِ واقعی'
+      : `🔮 جدولِ احتمالیِ امشب (${fa(projection.count)} بازی)`;
+    container.appendChild(toggle);
+  }
+
+  const projActive = showProjTable && !!projection;
+  const curRank = {};
+  rankings.forEach((p, i) => { curRank[p.name] = i; });
+
+  let displayRankings = rankings;
+  if (projActive) {
+    displayRankings = rankings
+      .map(p => { const g = projection.points[p.name] || 0; return { ...p, projGain: g, projTotal: p.total + g }; })
+      .sort((a, b) => b.projTotal - a.projTotal || b.netAcc - a.netAcc || b.exact - a.exact || b.gd - a.gd || a.faName.localeCompare(b.faName, 'fa'));
+    const note = document.createElement('div');
+    note.className = 'proj-note';
+    note.innerHTML = `🔮 جدولِ فرضی اگر پیش‌بینیِ پواسون برای ${fa(projection.count)} بازیِ روزِ بعد درست دربیاید`;
+    container.appendChild(note);
+  }
+
+  const drama = projActive ? null : buildLeaderboardDramaCard(rankings, rankContext, gradedCount);
   if (drama) container.appendChild(drama);
 
   const medals = ['🥇', '🥈', '🥉'];
-  rankings.forEach((p, i) => {
+  displayRankings.forEach((p, i) => {
     const card = document.createElement('div');
-    const moveHtml = renderMovePill(rankContext.movements[p.name]);
-    const badgesHtml = renderPredictionBadges(p.name, p, badgeLeaders);
+    const moveHtml = projActive
+      ? projMoveHtml(curRank[p.name] - i)
+      : renderMovePill(rankContext.movements[p.name]);
+    const sigHtml = renderSignatureTag(p.name);
+    const badgesHtml = renderPredictionBadges(p.name, p, badgeLeaders, sigHtml);
     const last10Html = renderLast10Dots(p.name);
-    card.className = `rank-card${p.name === currentPlayer ? ' me' : ''}`;
+    const ptsHtml = projActive
+      ? `<div class="rank-pts">${p.projTotal}</div><div class="rank-pts-lbl proj">${p.projGain > 0 ? '+' + fa(p.projGain) : fa(p.projGain)} احتمالی</div>`
+      : `<div class="rank-pts">${p.total}</div><div class="rank-pts-lbl">امتیاز</div>`;
+    card.className = `rank-card${p.name === currentPlayer ? ' me' : ''}${projActive ? ' proj' : ''}`;
     card.innerHTML = `
       <div class="rank-pos">${i < 3 ? medals[i] : i + 1}</div>
       <div class="rank-avatar">${p.avatar}</div>
@@ -7724,8 +7803,7 @@ function buildRankView() {
         ${last10Html}
       </div>
       <div class="rank-pts-col">
-        <div class="rank-pts">${p.total}</div>
-        <div class="rank-pts-lbl">امتیاز</div>
+        ${ptsHtml}
       </div>`;
     container.appendChild(card);
   });
@@ -7733,8 +7811,8 @@ function buildRankView() {
   container.appendChild(buildRankEvolutionCard(rankings));
   container.appendChild(buildGoalHistogramCard(rankings));
   buildTwinCard(container);
-  buildConsensusCard(container);
-  buildCurseCard(container);
+  buildScoreTwinCard(container);
+  buildTopTeamsCard(container);
 }
 
 // ── جدول روزانه ──
@@ -8342,9 +8420,157 @@ function comparePickPillsHtml(picks, real, isKo) {
   }).join('');
 }
 
+// ══════════════════════════════════════════════════════
+// ── مدلِ آماریِ پواسون (Dixon-Coles) برای بازی‌های آینده ──
+// قدرتِ حمله/دفاعِ هر تیم از گل‌های زده/خوردهٔ گذشته برآورد می‌شود،
+// سپس توزیعِ احتمالِ همهٔ نتیجه‌ها ساخته می‌شود. مبنای علمیِ بازارِ شرط‌بندی.
+// ══════════════════════════════════════════════════════
+function poissonPmf(k, lambda) {
+  let p = Math.exp(-lambda);
+  for (let i = 1; i <= k; i++) p *= lambda / i;
+  return p;
+}
+
+function poissonTeamStats(groupOnly = false) {
+  const gf = {}, ga = {}, gp = {};
+  let totalGoals = 0, totalGames = 0;
+  const add = (t, f, a) => {
+    if (!t) return;
+    gf[t] = (gf[t] || 0) + f; ga[t] = (ga[t] || 0) + a; gp[t] = (gp[t] || 0) + 1;
+  };
+  MATCHES.forEach(m => {
+    const r = scoreArray(realScores[m.id]);
+    if (!r) return;
+    add(m.t1, r[0], r[1]); add(m.t2, r[1], r[0]);
+    totalGoals += r[0] + r[1]; totalGames += 2;
+  });
+  if (!groupOnly) {   // بک‌تستِ مرحلهٔ حذفی فقط از دادهٔ گروهی استفاده می‌کند
+    KO.forEach(m => {
+      const r = scoreArray(koReal[m.id]);
+      if (!r) return;
+      add(resolveSlot(m.s1), r[0], r[1]); add(resolveSlot(m.s2), r[1], r[0]);
+      totalGoals += r[0] + r[1]; totalGames += 2;
+    });
+  }
+  if (totalGames === 0) return null;
+  return { gf, ga, gp, mu: totalGoals / totalGames };
+}
+
+function poissonPrediction(team1, team2, st) {
+  if (!st) return null;
+  const { gf, ga, gp, mu } = st;
+  if (gp[team1] === undefined || gp[team2] === undefined) return null;
+  const REG = 1.0;   // منظم‌سازیِ بیزی به‌سمتِ میانگین (برای نمونهٔ کوچک)
+  const atk = t => ((gf[t] + mu * REG) / (gp[t] + REG)) / mu;
+  const def = t => ((ga[t] + mu * REG) / (gp[t] + REG)) / mu;
+  const lambda1 = atk(team1) * def(team2) * mu;
+  const lambda2 = atk(team2) * def(team1) * mu;
+  const RHO = -0.1, MAXG = 8;   // تصحیحِ Dixon-Coles برای نتیجه‌های کم‌گل
+  const tau = (x, y) => {
+    if (x === 0 && y === 0) return 1 - lambda1 * lambda2 * RHO;
+    if (x === 0 && y === 1) return 1 + lambda1 * RHO;
+    if (x === 1 && y === 0) return 1 + lambda2 * RHO;
+    if (x === 1 && y === 1) return 1 - RHO;
+    return 1;
+  };
+  let total = 0, best = { p: -1, i: 0, j: 0 }, pW1 = 0, pD = 0, pW2 = 0;
+  for (let i = 0; i <= MAXG; i++) {
+    for (let j = 0; j <= MAXG; j++) {
+      const p = poissonPmf(i, lambda1) * poissonPmf(j, lambda2) * Math.max(tau(i, j), 0);
+      total += p;
+      if (p > best.p) best = { p, i, j };
+      if (i > j) pW1 += p; else if (i < j) pW2 += p; else pD += p;
+    }
+  }
+  return {
+    score: [best.i, best.j],
+    scoreProb: best.p / total,
+    pW1: pW1 / total, pD: pD / total, pW2: pW2 / total
+  };
+}
+
+function poissonBlockHtml(info, pm, real) {
+  const pc = x => fa(Math.round(x * 100));
+  const backtest = Array.isArray(real);
+  // در بک‌تست: امتیازی که نتیجهٔ محتملِ مدل می‌گرفت (مقیاسِ حذفی: دقیق ۸)
+  let verdict = '';
+  if (backtest) {
+    const pts = calcScore(pm.score, real, true);
+    const label = pts === 8 ? '🎯 نتیجهٔ دقیق' : pts === 4 ? '✅ تفاضلِ گل درست' : pts === 2 ? '✅ برندهٔ درست' : '❌ اشتباه';
+    verdict = `<div class="pm-verdict ${pts > 0 ? 'ok' : 'bad'}">مدل: ${label} (${fa(pts)}/۸)</div>`;
+  }
+  return `<div class="pm-box${backtest ? ' bt' : ''}">
+    <div class="pm-title">🧮 مدلِ آماری (پواسون)</div>
+    <div class="pm-main">
+      <span class="pm-team">${info.f1} ${escapeHtml(info.fa1)}</span>
+      <span class="pm-score">${fa(pm.score[1])} - ${fa(pm.score[0])}</span>
+      <span class="pm-team">${escapeHtml(info.fa2)} ${info.f2}</span>
+    </div>
+    <div class="pm-prob">${backtest ? 'پیش‌بینیِ مدل' : 'محتمل‌ترین نتیجه'} · احتمال ${pc(pm.scoreProb)}٪</div>
+    <div class="pm-odds">
+      <span style="color:var(--green-light)">بردِ ${info.f1} ${pc(pm.pW1)}٪</span>
+      <span style="color:var(--dim)">تساوی ${pc(pm.pD)}٪</span>
+      <span style="color:#5dade2">بردِ ${info.f2} ${pc(pm.pW2)}٪</span>
+    </div>
+    ${verdict}
+  </div>`;
+}
+
+// «روزِ فوتبالی»: بازی‌های عصر + بامدادِ روزِ بعد یک روز حساب می‌شوند (شیفتِ ۶ ساعته)
+function footballDayKey(m) {
+  const t = matchDateValue(m) - 6 * 3600 * 1000;
+  return Math.floor(t / (24 * 3600 * 1000));
+}
+
+// رُندهایی از مرحلهٔ حذفی که همهٔ بازیکن‌ها پیش‌بینی‌شان را ثبت کرده‌اند (ضدِ تقلب)
+function koRoundsAllPredicted() {
+  const active = playersWithPredictionData();
+  const unlocked = new Set();
+  if (!active.length) return unlocked;
+  [...new Set(KO.map(m => m.round))].forEach(round => {
+    const rm = KO.filter(x => x.round === round);
+    if (active.every(p => rm.every(x => scoreArray((koPredictions[p] || {})[x.id])))) unlocked.add(round);
+  });
+  return unlocked;
+}
+
+// امتیازِ احتمالیِ هر بازیکن اگر پیش‌بینیِ پواسون برای بازی‌های «روزِ فوتبالیِ بعدی» درست دربیاید
+function poissonMatchdayProjection() {
+  const st = poissonTeamStats();
+  const active = playersWithPredictionData();
+  if (!st || !active.length) return null;
+  const unlocked = koRoundsAllPredicted();
+  const cands = [];
+  KO.forEach(m => {
+    if (scoreArray(koReal[m.id])) return;          // انجام‌شده
+    if (!unlocked.has(m.round)) return;             // هنوز همه پیش‌بینی نکرده‌اند
+    const t1 = resolveSlot(m.s1), t2 = resolveSlot(m.s2);
+    if (!t1 || !t2) return;
+    const pm = poissonPrediction(t1, t2, st);
+    if (!pm) return;
+    cands.push({ m, score: pm.score, day: footballDayKey(m) });
+  });
+  if (!cands.length) return null;
+  const targetDay = Math.min(...cands.map(c => c.day));
+  const dayMatches = cands.filter(c => c.day === targetDay);
+  const points = {};
+  active.forEach(p => {
+    let pts = 0;
+    dayMatches.forEach(({ m, score }) => {
+      const s = calcScore(scoreArray((koPredictions[p] || {})[m.id]), score, true);   // این‌ها بازیِ حذفی‌اند
+      if (s) pts += s;
+    });
+    points[p] = pts;
+  });
+  return { points, count: dayMatches.length };
+}
+
 function buildResultsList() {
   const list = document.getElementById('results-list');
   list.innerHTML = '';
+  const pStats = poissonTeamStats();          // همهٔ نتایج (برای بازی‌های آینده)
+  const pStatsGroup = poissonTeamStats(true);  // فقط گروهی (برای بک‌تستِ مرحلهٔ حذفی)
+  const unlockedKoRounds = koRoundsAllPredicted();
   const players = activeResultsPlayers ? Array.from(activeResultsPlayers) : playersWithPredictionData();
 
   if (players.length === 0) {
@@ -8427,7 +8653,22 @@ function buildResultsList() {
           <span style="color:${dlcol}">~ ${dpct}%</span>
           <span style="color:${t1lcol}">${t1pct}% ${info.f1}</span>
         </div>
-      </div>`;
+      </div>
+      ${(() => {
+        const team1 = isKo ? resolveSlot(m.s1) : m.t1;
+        const team2 = isKo ? resolveSlot(m.s2) : m.t2;
+        if (!team1 || !team2) return '';
+        if (!realScore) {   // بازیِ آینده: فقط وقتی همهٔ بازیکن‌ها آن مرحله را پیش‌بینی کرده‌اند (ضدِ تقلب)
+          if (isKo && !unlockedKoRounds.has(m.round)) return '';
+          const pm = poissonPrediction(team1, team2, pStats);
+          return pm ? poissonBlockHtml(info, pm) : '';
+        }
+        if (isKo) {         // بازیِ حذفیِ انجام‌شده: بک‌تست فقط با دادهٔ گروهی
+          const pm = poissonPrediction(team1, team2, pStatsGroup);
+          return pm ? poissonBlockHtml(info, pm, realScore) : '';
+        }
+        return '';          // بازیِ گروهیِ انجام‌شده: چیزی نشان داده نمی‌شود
+      })()}`;
     list.appendChild(card);
   });
 
@@ -8478,8 +8719,6 @@ function getPlayerFunSentence(p, i, rankings) {
     return `🧱 ${n} فکر می‌کنه فوتبال همش ۱-۰ ئه`;
   if (profile && profile.drawRate > 0.25)
     return `🤝 ${n} عاشق تساوی‌ئه — حتماً دیپلماته`;
-  if (profile && profile.cleanSheets > profile.groupCount * 0.6)
-    return `🧤 ${n} دروازه‌بان بوده انگار — همش کلین‌شیت`;
   if (i === 1) {
     const gap = rankings[0].total - p.total;
     return `😤 ${n} فقط ${fa(gap)} امتیاز تا صدر — نفسش به شماره افتاده`;
@@ -8501,6 +8740,7 @@ function shareLeaderboardImage(btn) {
     return { name: p, faName: pobj ? pobj.faName : p, avatar: pobj ? pobj.avatar : '👤', ...calcPlayerTotal(p), profile: predictionProfile(p) };
   }).sort((a, b) => b.total - a.total || b.netAcc - a.netAcc || b.exact - a.exact || b.gd - a.gd || a.faName.localeCompare(b.faName, 'fa'));
 
+  const badgeLeaders = buildBadgeLeaders(rankings);
   const gradedCount = MATCHES.filter(m => realScores[m.id] !== undefined).length;
   const koGraded = KO.filter(m => koReal[m.id] !== undefined).length;
   const totalGraded = gradedCount + koGraded;
@@ -8576,7 +8816,11 @@ function shareLeaderboardImage(btn) {
 
   rankings.forEach((p, i) => {
     const y = padTop + i * rowH + rowH / 2;
-    const funSentence = getPlayerFunSentence(p, i, rankings);
+    // همان تگ‌های جدول (نشان‌ها) که مرحلهٔ حذفی را هم حساب می‌کنند؛ اگر نشانی نبود، جملهٔ بامزه
+    const badges = buildPredictionBadges(p.name, p, badgeLeaders);
+    const funSentence = badges.length
+      ? badges.slice(0, 2).map(b => `${b.icon} ${b.title}`).join('  ')
+      : getPlayerFunSentence(p, i, rankings);
 
     // row background
     if (i === 0) {
@@ -8818,12 +9062,13 @@ function switchHistoPlayer(name) {
 
 function computeTwinPairs() {
   const players = playersWithPredictionData();
-  const scored = scoredMatchItems();
+  // همه‌ی بازی‌ها (نه فقط بازی‌های امتیازخورده) تا پیش‌بینی‌های آینده هم شمرده شوند
+  const matches = allMatchItems();
   const pairs = [];
   for (let a = 0; a < players.length; a++) {
     for (let b = a + 1; b < players.length; b++) {
       let same = 0, sameWinner = 0, total = 0, totalError = 0;
-      scored.forEach(m => {
+      matches.forEach(m => {
         const pa = predictionForMatchItem(players[a], m);
         const pb = predictionForMatchItem(players[b], m);
         const sa = scoreArray(pa), sb = scoreArray(pb);
@@ -8897,236 +9142,210 @@ function buildTwinCard(container) {
 }
 
 // ══════════════════════════════════════════════════════
-// ── فیچر ۳: شکستن اجماع / Consensus Breaker ──
+// ── فیچر: تیم‌ها و اسکورهای پول‌ساز هر بازیکن ──
 // ══════════════════════════════════════════════════════
 
-function computeConsensusBreakers() {
-  const players = playersWithPredictionData();
-  const scored = scoredMatchItems();
-  const results = [];
+// برای هر بازیکن: امتیازی که هر تیم و هر اسکور برایش آورده را جمع می‌زند
+// (هم مرحله‌ی گروهی و هم حذفی؛ امتیاز هر بازی به هر دو تیمِ همان بازی نسبت داده می‌شود)
+function playerPointBreakdown(playerName) {
+  const teamPoints = {};   // team -> { team, points, matches }
+  const scorePoints = {};  // "hi-lo" -> { hi, lo, points, count }
 
-  scored.forEach(m => {
-    // for each match, see which direction each player predicted
-    const predictions = {};
-    players.forEach(p => {
-      const pred = predictionForMatchItem(p, m);
-      const sc = scoreArray(pred);
-      if (!sc) return;
-      predictions[p] = { sc, sign: Math.sign(sc[0] - sc[1]) };
-    });
-
-    const entries = Object.entries(predictions);
-    if (entries.length < 3) return;
-
-    // find the majority winner direction
-    const signs = entries.map(([_, v]) => v.sign);
-    const counts = { '-1': 0, '0': 0, '1': 0 };
-    signs.forEach(s => counts[String(s)]++);
-    const majoritySign = Number(Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]);
-    const majorityCount = counts[String(majoritySign)];
-
-    // find rebels (predicted opposite of majority)
-    entries.forEach(([name, v]) => {
-      if (v.sign === majoritySign) return;
-      // only interesting if they were truly alone or nearly alone
-      const rebellCount = entries.filter(([_, x]) => x.sign === v.sign).length;
-      if (rebellCount > entries.length / 3) return; // not a rebel if many agreed
-
-      // check if rebel was right
-      const [rs1, rs2] = m.sc;
-      const realSign = Math.sign(rs1 - rs2);
-      const wasRight = v.sign === realSign;
-      const pts = calcScore([v.sc[0], v.sc[1]], m.real, m.kind === 'ko');
-
-      const t1Name = m.t1 ? teamFa(m.t1) : (m.s1 || '?');
-      const t2Name = m.t2 ? teamFa(m.t2) : (m.s2 || '?');
-      const f1 = FLAGS[m.t1] || '';
-      const f2 = FLAGS[m.t2] || '';
-
-      results.push({
-        player: name, match: m, wasRight, pts,
-        t1Name, t2Name, f1, f2,
-        rebellCount, majorityCount, totalPlayers: entries.length,
-        predScore: v.sc, realScore: m.sc
-      });
-    });
-  });
-
-  return results;
-}
-
-function buildConsensusCard(container) {
-  const breakers = computeConsensusBreakers();
-  if (!breakers.length) return;
-
-  const geniuses = breakers.filter(b => b.wasRight).sort((a, b) => (b.pts || 0) - (a.pts || 0));
-  const stubborns = breakers.filter(b => !b.wasRight);
-  const pdn = n => playerDisplayName(n);
-
-  // count per player
-  const geniusCount = {}, stubbornCount = {};
-  geniuses.forEach(g => { geniusCount[g.player] = (geniusCount[g.player] || 0) + 1; });
-  stubborns.forEach(s => { stubbornCount[s.player] = (stubbornCount[s.player] || 0) + 1; });
-
-  const card = document.createElement('div');
-  card.className = 'cmp-card';
-
-  let html = `<div class="cmp-title">🤫 شکستن اجماع</div>
-    <div class="cmp-sub">وقتی همه یک چیز می‌گن ولی یکی مخالفه — گاهی نابغه‌ست، گاهی لجبازه!</div>`;
-
-  // genius section
-  html += `<div class="cmp-section-title">🧠 نابغه تنها — تنها مخالف بود و درست در اومد</div>`;
-  if (geniuses.length === 0) {
-    html += '<div style="color:var(--dim);font-size:.75rem;padding:.4rem 0">هنوز کسی اجماع رو با موفقیت نشکسته!</div>';
-  } else {
-    geniuses.slice(0, 8).forEach(g => {
-      html += `<div class="cmp-match-row genius">
-        <div class="cmp-match-info">${escapeHtml(g.f1)} ${escapeHtml(g.t1Name)} ${fa(g.realScore[0])}-${fa(g.realScore[1])} ${escapeHtml(g.t2Name)} ${escapeHtml(g.f2)}
-          <div class="cmp-match-detail">پیش‌بینی ${escapeHtml(pdn(g.player))}: ${fa(g.predScore[0])}-${fa(g.predScore[1])} · ${fa(g.majorityCount)} نفر مخالف بودن</div>
-        </div>
-        <span class="cmp-player-tag genius">🧠 نابغه</span>
-      </div>`;
-    });
-  }
-
-  // stubborn section
-  html += `<div class="cmp-section"><div class="cmp-section-title">😤 لجباز بی‌دلیل — تنها مخالف بود و اشتباه کرد</div>`;
-  if (stubborns.length === 0) {
-    html += '<div style="color:var(--dim);font-size:.75rem;padding:.4rem 0">فعلاً لجبازی ثبت نشده!</div>';
-  } else {
-    stubborns.slice(0, 8).forEach(s => {
-      html += `<div class="cmp-match-row stubborn">
-        <div class="cmp-match-info">${escapeHtml(s.f1)} ${escapeHtml(s.t1Name)} ${fa(s.realScore[0])}-${fa(s.realScore[1])} ${escapeHtml(s.t2Name)} ${escapeHtml(s.f2)}
-          <div class="cmp-match-detail">پیش‌بینی ${escapeHtml(pdn(s.player))}: ${fa(s.predScore[0])}-${fa(s.predScore[1])} · ${fa(s.majorityCount)} نفر درست گفتن</div>
-        </div>
-        <span class="cmp-player-tag stubborn">😤 لجباز</span>
-      </div>`;
-    });
-  }
-  html += '</div>';
-
-  // scoreboard
-  const allNames = new Set([...Object.keys(geniusCount), ...Object.keys(stubbornCount)]);
-  if (allNames.size > 0) {
-    html += `<div class="cmp-section"><div class="cmp-section-title">📊 خلاصه: چند بار نابغه، چند بار لجباز؟</div>`;
-    [...allNames].forEach(name => {
-      const gc = geniusCount[name] || 0;
-      const sc = stubbornCount[name] || 0;
-      const label = gc > sc ? '🧠' : sc > gc ? '😤' : '⚖️';
-      html += `<div class="cmp-pair">
-        <div class="cmp-pair-names">${label} ${escapeHtml(pdn(name))}
-          <div class="cmp-pair-desc">🧠 نابغه: ${fa(gc)} بار · 😤 لجباز: ${fa(sc)} بار</div>
-        </div>
-        <div class="cmp-pair-stat">${fa(gc)}/${fa(gc + sc)}</div>
-      </div>`;
-    });
-    html += '</div>';
-  }
-
-  card.innerHTML = html;
-  container.appendChild(card);
-}
-
-// ══════════════════════════════════════════════════════
-// ── فیچر ۶: نفرین تیمی / Curse Tracker ──
-// ══════════════════════════════════════════════════════
-
-function computePlayerCurses(playerName) {
-  const preds = allPredictions[playerName] || {};
-  const teamData = {};
+  const addTeam = (team, pts) => {
+    if (!team) return;
+    if (!teamPoints[team]) teamPoints[team] = { team, points: 0, matches: 0 };
+    teamPoints[team].points += pts;
+    teamPoints[team].matches++;
+  };
+  const addScore = (pick, pts) => {
+    const hi = Math.max(pick[0], pick[1]);
+    const lo = Math.min(pick[0], pick[1]);
+    const key = `${hi}-${lo}`;
+    if (!scorePoints[key]) scorePoints[key] = { hi, lo, points: 0, count: 0 };
+    scorePoints[key].points += pts;
+    scorePoints[key].count++;
+  };
 
   MATCHES.forEach(m => {
-    const pick = scoreArray(preds[m.id]);
-    const real = scoreArray(realScores[m.id]);
-    if (!pick || !real) return;
-    const [ps1, ps2] = pick;
-    const [rs1, rs2] = real;
-
-    [m.t1, m.t2].forEach((team, ti) => {
-      if (!teamData[team]) teamData[team] = { predWins: 0, realWins: 0, predLoss: 0, realLoss: 0, matches: 0, wrongWins: 0, wrongLoss: 0 };
-      teamData[team].matches++;
-      const predW = ti === 0 ? ps1 > ps2 : ps2 > ps1;
-      const realW = ti === 0 ? rs1 > rs2 : rs2 > rs1;
-      const predL = ti === 0 ? ps1 < ps2 : ps2 < ps1;
-      const realL = ti === 0 ? rs1 < rs2 : rs2 < rs1;
-      if (predW) teamData[team].predWins++;
-      if (realW) teamData[team].realWins++;
-      if (predL) teamData[team].predLoss++;
-      if (realL) teamData[team].realLoss++;
-      if (predW && !realW) teamData[team].wrongWins++;
-      if (predL && !realL) teamData[team].wrongLoss++;
-    });
+    const pick = scoreArray((allPredictions[playerName] || {})[m.id]);
+    const pts = calcScore(pick, realScores[m.id]);
+    if (pick === null || pts === null) return;
+    addTeam(m.t1, pts); addTeam(m.t2, pts); addScore(pick, pts);
+  });
+  KO.forEach(m => {
+    const pick = scoreArray((koPredictions[playerName] || {})[m.id]);
+    const pts = calcScore(pick, koReal[m.id], true);
+    if (pick === null || pts === null) return;
+    addTeam(resolveSlot(m.s1), pts); addTeam(resolveSlot(m.s2), pts); addScore(pick, pts);
   });
 
-  const entries = Object.entries(teamData).filter(([_, d]) => d.matches >= 2);
-
-  // cursed: predicted to win a lot but they kept losing
-  const cursed = entries
-    .filter(([_, d]) => d.predWins >= 2 && d.wrongWins >= 2)
-    .map(([team, d]) => ({ team, ...d, curseRate: d.wrongWins / d.predWins }))
-    .sort((a, b) => b.wrongWins - a.wrongWins || b.curseRate - a.curseRate);
-
-  // blessed: predicted to lose but they didn't — reverse curse
-  const blessed = entries
-    .filter(([_, d]) => d.predLoss >= 2 && d.wrongLoss >= 2)
-    .map(([team, d]) => ({ team, ...d, blessRate: d.wrongLoss / d.predLoss }))
-    .sort((a, b) => b.wrongLoss - a.wrongLoss || b.blessRate - a.blessRate);
-
-  return { cursed: cursed.slice(0, 3), blessed: blessed.slice(0, 3) };
+  const teams = Object.values(teamPoints).filter(d => d.points > 0)
+    .sort((a, b) => b.points - a.points || b.matches - a.matches || teamFa(a.team).localeCompare(teamFa(b.team), 'fa'));
+  const scores = Object.values(scorePoints).filter(d => d.points > 0)
+    .sort((a, b) => b.points - a.points || b.count - a.count);
+  return { teams, scores };
 }
 
-function buildCurseCard(container) {
+// جوک‌های مخصوص چند تیم سرشناس؛ بقیه از قالب‌های عمومی استفاده می‌کنند
+const TEAM_JOKES = {
+  'Brazil':      (t, n) => `${t} برای ${n} سامبا رفت و امتیاز پاشید! 🕺`,
+  'Argentina':   (t, n) => `انگار مسیِ ${t} شخصاً واسه ${n} گل می‌زد! 🐐`,
+  'IR Iran':     (t, n) => `دلِ ${n} با ${t}ه و جیبش هم پرِ امتیاز! 🇮🇷`,
+  'Germany':     (t, n) => `${t} مثل ساعت سوییسی سرِ وقت امتیاز تحویل ${n} داد ⏱️`,
+  'France':      (t, n) => `خروسِ ${t} هر بار قوقولی‌قوقو کرد، ${n} امتیاز گرفت 🐓`,
+  'Spain':       (t, n) => `تیکی‌تاکای ${t} یه‌راست رفت تو جیبِ ${n} 🎯`,
+  'England':     (t, n) => `${t} این بار به‌جای دل‌شکستن، دلِ ${n} رو برد! ☕`,
+  'Portugal':    (t, n) => `${t} با یه سرضربه امتیاز ${n} رو دوبرابر کرد 🇵🇹`,
+  'Netherlands': (t, n) => `نارنجی‌پوشِ ${t} تمام‌عیار واسه ${n} کار کرد 🍊`,
+  'USA':         (t, n) => `${t} میزبان مهربونی برای امتیازهای ${n} بود 🦅`,
+  'Belgium':     (t, n) => `نسل طلایی ${t} بالاخره یه نفر رو خوشحال کرد: ${n}! 🍟`,
+  'Croatia':     (t, n) => `${t} تا تهِ زمین دوید تا امتیازِ ${n} رو برسونه 🏃`,
+  'Mexico':      (t, n) => `${t} با هر گل، امتیاز ${n} رو تاکو‌پیچ کرد 🌮`,
+};
+
+function teamJoke(playerName, topTeam) {
+  if (!topTeam) return '';
+  const n = playerDisplayName(playerName);
+  const t = teamFa(topTeam.team);
+  const specific = TEAM_JOKES[topTeam.team];
+  if (specific) return specific(t, n);
+  const generic = [
+    `هر وقت ${t} بازی داشت، ${n} پول پارو می‌کرد! 🤑`,
+    `${t} رفیقِ فابریکِ ${n}ه — بدون این تیم، جدول یه‌جور دیگه بود!`,
+    `${n} باید نصف امتیازش رو به ${t} هدیه بده 🎁`,
+    `انگار ${n} جوابِ بازی‌های ${t} رو از قبل لو گرفته بود! 🔮`
+  ];
+  return generic[(n.length + t.length + topTeam.matches) % generic.length];
+}
+
+function scoreJoke(playerName, topScore) {
+  if (!topScore) return '';
+  return `اسکورِ طلایی ${fa(`${topScore.hi}-${topScore.lo}`)} به‌تنهایی ${fa(topScore.points)} امتیاز ساخت — چشم‌بسته همینو بزن!`;
+}
+
+function signatureJoke(playerName, topTeam, topScore) {
+  const parts = [];
+  if (topTeam) parts.push(`🏆 ${teamJoke(playerName, topTeam)} (${fa(topTeam.points)} امتیاز)`);
+  if (topScore) parts.push(`🍀 ${scoreJoke(playerName, topScore)}`);
+  return parts.join(' · ');
+}
+
+// تگ کوچکِ کنارِ نام هر بازیکن: پول‌سازترین اسکور و پول‌سازترین تیمش (بامزه)
+function renderSignatureTag(playerName) {
+  const bd = playerPointBreakdown(playerName);
+  const topTeam = bd.teams[0];
+  const topScore = bd.scores[0];
+  if (!topTeam && !topScore) return '';
+  const teamShort = topTeam ? `${FLAGS[topTeam.team] || '🏳'} ${teamFa(topTeam.team)}` : '';
+  const scoreShort = topScore ? fa(`${topScore.hi}-${topScore.lo}`) : '';
+  const chip = [scoreShort, teamShort].filter(Boolean).join(' · ');
+  const joke = signatureJoke(playerName, topTeam, topScore);
+  return `<button type="button" class="fun-badge sig-badge" onclick="showBadgeTip(event)" aria-label="${escapeHtml('امضای پول‌ساز: ' + joke)}"><span>💸</span>${escapeHtml(chip)}<span class="badge-tip" role="tooltip">${escapeHtml(joke)}</span></button>`;
+}
+
+function buildTopTeamsCard(container) {
   const players = playersWithPredictionData();
   if (!players.length) return;
 
   const intro = document.createElement('div');
   intro.className = 'cmp-card';
-  intro.innerHTML = `<div class="cmp-title">🔮 نفرین‌شده‌ها</div>
-    <div class="cmp-sub">هر وقت فلانی یه تیم رو برنده می‌ذاره، اون تیم نمی‌بره! و بالعکس — بعضی تیم‌ها وقتی باختشون رو پیش‌بینی می‌کنن، نمی‌بازن! 😈</div>`;
+  intro.innerHTML = `<div class="cmp-title">🤑 تیم‌های پول‌ساز</div>
+    <div class="cmp-sub">برای هر بازیکن، تیم‌هایی که بیشترین امتیاز رو براش ساختن</div>`;
   container.appendChild(intro);
 
   const pdn = n => playerDisplayName(n);
 
   players.forEach(playerName => {
-    const curses = computePlayerCurses(playerName);
-    if (!curses.cursed.length && !curses.blessed.length) return;
+    const bd = playerPointBreakdown(playerName);
+    if (!bd.teams.length) return;
 
     const card = document.createElement('div');
     card.className = 'cmp-card';
     let html = `<div style="font-size:.85rem;font-weight:900;color:var(--text);margin-bottom:.55rem">${escapeHtml(pdn(playerName))}</div>`;
 
-    if (curses.cursed.length) {
-      html += '<div class="cmp-section-title">☠️ نفرین — برنده‌شون می‌ذاره ولی نمی‌برن</div>';
-      curses.cursed.forEach(c => {
-        html += `<div class="curse-team cursed">
-          <span class="curse-flag">${FLAGS[c.team] || '🏳'}</span>
-          <div class="curse-info">
-            <div class="curse-team-name">${teamFa(c.team)}</div>
-            <div class="curse-stat">${fa(c.wrongWins)} بار برنده‌شون گذاشت ولی نبردن (از ${fa(c.predWins)} پیش‌بینی برد)</div>
-          </div>
-          <span class="curse-rate" style="color:var(--red)">${fa(c.wrongWins)} ☠️</span>
-        </div>`;
-      });
-    }
+    bd.teams.slice(0, 5).forEach((t, i) => {
+      const avg = (t.points / t.matches).toFixed(1);
+      html += `<div class="tt-team${i === 0 ? ' top' : ''}">
+        <span class="tt-flag">${FLAGS[t.team] || '🏳'}</span>
+        <div class="tt-info">
+          <div class="tt-name">${i === 0 ? '🥇 ' : ''}${teamFa(t.team)}</div>
+          <div class="tt-stat">${fa(t.matches)} بازی · میانگین ${fa(avg)} امتیاز در هر بازی</div>
+        </div>
+        <span class="tt-pts">${fa(t.points)} امتیاز</span>
+      </div>`;
+    });
 
-    if (curses.blessed.length) {
-      html += `<div class="${curses.cursed.length ? 'cmp-section' : ''}"><div class="cmp-section-title">🍀 برعکس — بازنده‌شون می‌ذاره ولی نمی‌بازن</div>`;
-      curses.blessed.forEach(c => {
-        html += `<div class="curse-team blessed">
-          <span class="curse-flag">${FLAGS[c.team] || '🏳'}</span>
-          <div class="curse-info">
-            <div class="curse-team-name">${teamFa(c.team)}</div>
-            <div class="curse-stat">${fa(c.wrongLoss)} بار بازنده‌شون گذاشت ولی نباختن (از ${fa(c.predLoss)} پیش‌بینی باخت)</div>
-          </div>
-          <span class="curse-rate" style="color:var(--green-light)">${fa(c.wrongLoss)} 🍀</span>
-        </div>`;
-      });
-      html += '</div>';
-    }
+    html += `<div class="tt-joke">${escapeHtml(teamJoke(playerName, bd.teams[0]))}</div>`;
 
     card.innerHTML = html;
     container.appendChild(card);
   });
+}
+
+// ══════════════════════════════════════════════════════
+// ── فیچر: هم‌فکرِ پول‌ساز / بیشترین امتیاز مشترک ──
+// ══════════════════════════════════════════════════════
+
+// برای هر جفت بازیکن: امتیازی که از پیش‌بینی‌های «کاملاً یکسان» نصیبشان شده
+function computeSharedPointPartners() {
+  const players = playersWithPredictionData();
+  const scored = scoredMatchItems();
+  const best = {}; // playerName -> { partner, points, count }
+
+  for (let a = 0; a < players.length; a++) {
+    for (let b = a + 1; b < players.length; b++) {
+      let points = 0, count = 0;
+      scored.forEach(m => {
+        const pa = scoreArray(predictionForMatchItem(players[a], m));
+        const pb = scoreArray(predictionForMatchItem(players[b], m));
+        if (!pa || !pb) return;
+        if (pa[0] === pb[0] && pa[1] === pb[1]) {
+          const pts = calcScore(pa, m.real, m.kind === 'ko');
+          if (pts > 0) { points += pts; count++; }
+        }
+      });
+      if (points <= 0) continue;
+      if (!best[players[a]] || points > best[players[a]].points) best[players[a]] = { partner: players[b], points, count };
+      if (!best[players[b]] || points > best[players[b]].points) best[players[b]] = { partner: players[a], points, count };
+    }
+  }
+  return best;
+}
+
+function buildScoreTwinCard(container) {
+  const best = computeSharedPointPartners();
+  const names = Object.keys(best);
+  if (!names.length) return;
+
+  const pdn = n => playerDisplayName(n);
+  const card = document.createElement('div');
+  card.className = 'cmp-card';
+
+  let html = `<div class="cmp-title">💞 هم‌فکرِ پول‌ساز</div>
+    <div class="cmp-sub">اگه پیش‌بینی‌هات رو مو‌به‌مو مثلِ کی می‌زدی، بیشترین امتیازِ مشترک نصیبت می‌شد؟ (فقط نتیجه‌های کاملاً یکسان که امتیاز آوردن حساب شدن)</div>`;
+
+  // هر جفت فقط یک‌بار نمایش داده می‌شود (جفت‌های دوطرفه تکراری حذف می‌شوند)
+  const seen = new Set();
+  const rows = [];
+  names.forEach(name => {
+    const b = best[name];
+    const key = [name, b.partner].sort().join('|');
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({ a: name, b: b.partner, points: b.points, count: b.count });
+  });
+  rows.sort((x, y) => y.points - x.points || y.count - x.count);
+  rows.forEach(r => {
+    html += `<div class="cmp-pair">
+      <div class="cmp-pair-names">${escapeHtml(pdn(r.a))} ↔ ${escapeHtml(pdn(r.b))}
+        <div class="cmp-pair-desc">${fa(r.count)} پیش‌بینیِ یکسانِ امتیازآور</div>
+      </div>
+      <div class="cmp-pair-stat">${fa(r.points)} امتیاز</div>
+    </div>`;
+  });
+
+  card.innerHTML = html;
+  container.appendChild(card);
 }
 
 function showToast(msg) {
