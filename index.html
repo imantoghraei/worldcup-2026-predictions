@@ -116,7 +116,8 @@ button{cursor:pointer;font-family:inherit}
 .pm-main .pm-team:first-child{text-align:left}
 .pm-main .pm-team:last-child{text-align:right}
 .pm-score{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.15rem .55rem;font-weight:900;color:var(--green-light);direction:ltr;white-space:nowrap;flex-shrink:0}
-.pm-prob{text-align:center;font-size:.68rem;color:var(--dim);margin-top:.45rem;font-weight:700}
+.pm-prob{text-align:center;font-size:.68rem;color:var(--dim);margin-bottom:.4rem;font-weight:700}
+.pm-alt{text-align:center;font-size:.66rem;color:var(--dim);margin-top:.35rem;font-weight:700}
 .pm-odds{display:flex;justify-content:center;flex-wrap:wrap;gap:.6rem;font-size:.7rem;font-weight:800;margin-top:.35rem}
 .pm-box.bt{border-color:rgba(52,152,219,.5);background:rgba(52,152,219,.06)}
 .pm-box.bt .pm-title{color:#5dade2}
@@ -209,6 +210,9 @@ button{cursor:pointer;font-family:inherit}
 /* ── جدول امتیازات ── */
 #rank-view,#daily-view{padding:.5rem .8rem}
 .rank-summary{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.65rem .9rem;margin-bottom:.8rem;font-size:.8rem;color:var(--dim);text-align:center}
+.rank-progress-txt{font-size:.75rem;color:var(--dim);font-weight:700;text-align:center;margin-bottom:.45rem}
+.rank-progress-bar{height:6px;border-radius:4px;background:#243040;overflow:hidden}
+.rank-progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#1a7a3f,#f0a500);transition:width .3s}
 .rank-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.85rem 1rem;margin-bottom:.55rem;display:flex;align-items:center;gap:.7rem}
 .rank-card.me{border-color:var(--gold);background:rgba(240,165,0,.05)}
 .rank-pos{font-size:1.5rem;font-weight:900;min-width:2.2rem;text-align:center}
@@ -282,10 +286,14 @@ button{cursor:pointer;font-family:inherit}
 .rtab{padding:.35rem .8rem;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--dim);font-size:.75rem;font-weight:700;white-space:nowrap;cursor:pointer;transition:all .15s}
 .rtab.active{background:var(--green);color:#fff;border-color:var(--green-light)}
 .rtab.done{border-color:var(--gold);color:var(--gold)}
+.rtab.locked{opacity:.6}
 .ko-warning{background:linear-gradient(135deg,rgba(240,165,0,.16),rgba(26,122,63,.10));border:1px solid rgba(240,165,0,.38);border-radius:12px;padding:.7rem .8rem;margin:0 0 .8rem;color:var(--text);font-size:.74rem;line-height:1.75;direction:rtl}
 .ko-warning strong{color:var(--gold);font-size:.82rem}
+.ko-round-lock{background:var(--card2);border:1px dashed var(--border);border-radius:12px;padding:.6rem .8rem;margin:0 0 .8rem;color:var(--dim);font-size:.75rem;font-weight:700;text-align:center;direction:rtl}
 .ko-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.85rem .9rem;margin-bottom:.55rem;transition:border-color .2s}
 .ko-card.done{border-color:var(--green)}
+.ko-card.locked{opacity:.92;border-style:dashed}
+.ko-lock-tag{font-size:.6rem;font-weight:800;color:var(--dim);background:var(--card2);border:1px solid var(--border);border-radius:4px;padding:.1rem .4rem}
 .ko-city{font-size:.65rem;color:var(--dim);margin-top:.15rem}
 /* جداکننده تب‌ها */
 .tab-sep{width:1px;background:var(--border);margin:.2rem .1rem;flex-shrink:0;align-self:stretch}
@@ -4900,6 +4908,10 @@ const FA_DAYS = {
 };
 const FA_MONTHS = {"Jun":"ژوئن","Jul":"ژوئیه"};
 const FA_ROUNDS = {R32:'یک‌سی‌ودوم',R16:'یک‌شانزدهم',QF:'ربع‌نهایی',SF:'نیمه‌نهایی','3rd':'مقام سوم',Final:'فینال'};
+// ترتیبِ مراحلِ حذفی و «مرحله‌ی بازِ فعلی» برای ویرایشِ پیش‌بینی.
+// مراحلِ قبل از KO_OPEN_ROUND فقط‌خواندنی (قفل) و مراحلِ بعد هنوز نمایش داده نمی‌شوند.
+const KO_ROUND_ORDER = ['R32','R16','QF','SF','3rd','Final'];
+const KO_OPEN_ROUND = 'R16';
 
 const KO = [
   // Round of 32
@@ -5035,7 +5047,7 @@ let realTable = { groups: {}, bestThirds: [] };
 let koPredictions = {};   // { playerName: { matchId: [s1,s2] } }
 let koReal = {};          // { matchId: [s1,s2] }
 let currentFilter = 'all';
-let currentKoRound = 'R32';
+let currentKoRound = KO_OPEN_ROUND;
 let currentDailyDate = null;
 let activeEvolutionPlayers = new Set();
 let evolutionSelectionTouched = false;
@@ -6241,8 +6253,8 @@ function slotLabel(slot) {
   if (/^1[A-L]$/.test(slot)) return `اول گروه ${slot[1]}`;
   if (/^2[A-L]$/.test(slot)) return `دوم گروه ${slot[1]}`;
   if (slot.startsWith('3-')) return `سوم برتر`;
-  if (slot.startsWith('W')) return `برنده م.${slot.slice(1)}`;
-  if (slot.startsWith('RU')) return `بازنده م.${slot.slice(2)}`;
+  if (slot.startsWith('W')) return `برندهٔ بازی ${fa(slot.slice(1))}`;
+  if (slot.startsWith('RU')) return `بازندهٔ بازی ${fa(slot.slice(2))}`;
   return slot;
 }
 
@@ -6258,6 +6270,20 @@ function getUnlockedRounds() {
   if(rounds.includes('SF')) { rounds.push('3rd'); rounds.push('Final'); }
   return rounds;
 }
+
+// مراحلی که در «تبِ پیش‌بینیِ حذفی» نمایش داده می‌شوند: از R32 تا مرحله‌ی بازِ فعلی.
+// مستقل از ثبتِ نتایج است تا بتوان مرحله‌ی بعد را زودتر برای پیش‌بینی باز کرد.
+function getPredictionRounds() {
+  if (!realTableCompleteForKnockout()) return [];
+  const openIdx = KO_ROUND_ORDER.indexOf(KO_OPEN_ROUND);
+  return KO_ROUND_ORDER.slice(0, openIdx + 1);
+}
+
+// فقط «مرحله‌ی بازِ فعلی» قابلِ ویرایش است؛ مراحلِ قبل قفل (فقط‌خواندنی)‌اند.
+function isKoRoundEditable(round) {
+  return round === KO_OPEN_ROUND;
+}
+
 function getPredictions(player) {
   if (!player) return {};
   if (!allPredictions[player]) allPredictions[player] = {};
@@ -6725,7 +6751,7 @@ function showKnockoutTab(round) {
 function buildKnockoutView(roundOverride) {
   const container = document.getElementById('knockout-view');
   container.innerHTML = '';
-  const unlocked = getUnlockedRounds();
+  const unlocked = getPredictionRounds();
 
   // Update tab label
   const koBtn = document.getElementById('tab-ko');
@@ -6743,6 +6769,7 @@ function buildKnockoutView(roundOverride) {
 
   const activeRound = roundOverride || currentKoRound || unlocked[unlocked.length-1];
   currentKoRound = activeRound;
+  const editable = isKoRoundEditable(activeRound);
 
   // Sub-tabs for each unlocked round
   const rtabs = document.createElement('div');
@@ -6750,19 +6777,26 @@ function buildKnockoutView(roundOverride) {
   unlocked.forEach(r => {
     const btn = document.createElement('button');
     const isDone = KO.filter(m=>m.round===r).every(m=>(koPredictions[currentPlayer]||{})[m.id]!==undefined);
-    btn.className = `rtab${r===activeRound?' active':''}${isDone?' done':''}`;
-    btn.textContent = FA_ROUNDS[r] || r;
+    btn.className = `rtab${r===activeRound?' active':''}${isDone?' done':''}${isKoRoundEditable(r)?'':' locked'}`;
+    btn.textContent = (isKoRoundEditable(r) ? '' : '🔒 ') + (FA_ROUNDS[r] || r);
     btn.onclick = () => buildKnockoutView(r);
     rtabs.appendChild(btn);
   });
   container.appendChild(rtabs);
 
-  const warning = document.createElement('div');
-  warning.className = 'ko-warning';
-  warning.innerHTML = `<strong>⚠️ پیش‌بینی حذفی حساس‌تر است</strong><br>
-    امتیازها دو برابرند: نتیجه دقیق ۸، تفاضل گل ۴، و برنده درست ۲ امتیاز دارد؛ پس با دقت پیش‌بینی کنید.
-    اگر بازی با پنالتی تمام شود، نتیجه رسمی بازی مساوی حساب می‌شود و فقط کسانی که مساوی پیش‌بینی کرده‌اند امتیاز می‌گیرند.`;
-  container.appendChild(warning);
+  if (editable) {
+    const warning = document.createElement('div');
+    warning.className = 'ko-warning';
+    warning.innerHTML = `<strong>⚠️ پیش‌بینی حذفی حساس‌تر است</strong><br>
+      امتیازها دو برابرند: نتیجه دقیق ۸، تفاضل گل ۴، و برنده درست ۲ امتیاز دارد؛ پس با دقت پیش‌بینی کنید.
+      اگر بازی با پنالتی تمام شود، نتیجه رسمی بازی مساوی حساب می‌شود و فقط کسانی که مساوی پیش‌بینی کرده‌اند امتیاز می‌گیرند.`;
+    container.appendChild(warning);
+  } else {
+    const lock = document.createElement('div');
+    lock.className = 'ko-round-lock';
+    lock.innerHTML = `🔒 پیش‌بینیِ «${FA_ROUNDS[activeRound]||activeRound}» بسته شده و فقط برای مشاهده است.`;
+    container.appendChild(lock);
+  }
 
   const roundMatches = KO.filter(m => m.round === activeRound);
   if (!roundMatches.length) return;
@@ -6780,6 +6814,7 @@ function buildKnockoutView(roundOverride) {
 }
 
 function buildKoCard(m) {
+  const editable = isKoRoundEditable(m.round);
   const pick = (koPredictions[currentPlayer]||{})[m.id];
   const s1 = pick ? pick[0] : null;
   const s2 = pick ? pick[1] : null;
@@ -6795,13 +6830,26 @@ function buildKoCard(m) {
   const pts = calcScore(pick, koReal[m.id], true);
   const ptsBadge = pts !== null ? `<span class="pts-badge p${pts}">★ ${pts}</span>` : '';
 
+  const scoreInner = editable
+    ? `<button class="sbtn" onclick="adjustKo(${m.id},1,-1)">−</button>
+       <div class="sval${s2!==null?' set':''}" id="kos2-${m.id}">${s2!==null?s2:'?'}</div>
+       <button class="sbtn" onclick="adjustKo(${m.id},1,1)">+</button>
+       <span style="color:var(--dim);font-size:.9rem;margin:0 .1rem">:</span>
+       <button class="sbtn" onclick="adjustKo(${m.id},0,-1)">−</button>
+       <div class="sval${s1!==null?' set':''}" id="kos1-${m.id}">${s1!==null?s1:'?'}</div>
+       <button class="sbtn" onclick="adjustKo(${m.id},0,1)">+</button>`
+    : `<div class="sval${s2!==null?' set':''}">${s2!==null?s2:'?'}</div>
+       <span style="color:var(--dim);font-size:.9rem;margin:0 .1rem">:</span>
+       <div class="sval${s1!==null?' set':''}">${s1!==null?s1:'?'}</div>`;
+
   const card = document.createElement('div');
-  card.className = `ko-card${done?' done':''}`;
+  card.className = `ko-card${done?' done':''}${editable?'':' locked'}`;
   card.id = `ko-card-${m.id}`;
   card.innerHTML = `
     <div class="match-meta">
       <span>${m.time}</span>
       <span class="group-tag">${FA_ROUNDS[m.round]||m.round}</span>
+      ${editable?'':'<span class="ko-lock-tag">🔒 قفل</span>'}
       ${ptsBadge}
     </div>
     <div class="ko-city">${m.city}</div>
@@ -6809,17 +6857,9 @@ function buildKoCard(m) {
       <div class="team-block"><span class="flag">${f1}</span><span class="tname">${t1}</span></div>
       <div class="score-col">
         <div class="vs">در برابر</div>
-        <div class="score-row">
-          <button class="sbtn" onclick="adjustKo(${m.id},1,-1)">−</button>
-          <div class="sval${s2!==null?' set':''}" id="kos2-${m.id}">${s2!==null?s2:'?'}</div>
-          <button class="sbtn" onclick="adjustKo(${m.id},1,1)">+</button>
-          <span style="color:var(--dim);font-size:.9rem;margin:0 .1rem">:</span>
-          <button class="sbtn" onclick="adjustKo(${m.id},0,-1)">−</button>
-          <div class="sval${s1!==null?' set':''}" id="kos1-${m.id}">${s1!==null?s1:'?'}</div>
-          <button class="sbtn" onclick="adjustKo(${m.id},0,1)">+</button>
-        </div>
+        <div class="score-row">${scoreInner}</div>
         ${done?`<div class="winner-badge ${s1>s2?'team1':s1<s2?'team2':'draw'} show">${s1>s2?'برد '+t1.split(' ')[0]:s1<s2?'برد '+t2.split(' ')[0]:'تساوی (+ پنالتی)'}</div>`:'<div class="winner-badge"></div>'}
-        <div class="ko-note">پیش‌بینی ۹۰ یا ۱۲۰ دقیقه — بدون پنالتی</div>
+        <div class="ko-note">${editable?'پیش‌بینی ۹۰ یا ۱۲۰ دقیقه — بدون پنالتی':'این مرحله بسته شده و قابل ویرایش نیست'}</div>
       </div>
       <div class="team-block"><span class="flag">${f2}</span><span class="tname">${t2}</span></div>
     </div>`;
@@ -6827,6 +6867,8 @@ function buildKoCard(m) {
 }
 
 function adjustKo(matchId, team, delta) {
+  const koMatch = KO.find(x => x.id === matchId);
+  if (koMatch && !isKoRoundEditable(koMatch.round)) return;   // مرحله‌ی قفل‌شده ویرایش نمی‌شود
   if (!koPredictions[currentPlayer]) koPredictions[currentPlayer] = {};
   if (!koPredictions[currentPlayer][matchId]) koPredictions[currentPlayer][matchId] = [0,0];
   koPredictions[currentPlayer][matchId][team] = Math.max(0, Math.min(20, koPredictions[currentPlayer][matchId][team] + delta));
@@ -7123,8 +7165,12 @@ async function updateRealScoresOnline(btn) {
     if (scores) {
       Object.entries(scores).forEach(([idStr, val]) => {
         if (val === null || val === undefined) return;            // نتیجه هنوز ثبت نشده
-        if (!Array.isArray(val) || val.length < 2) return;
-        const s1 = Number(val[0]), s2 = Number(val[1]);
+        // قالبِ آرایه‌ای [a,b] یا شیئی {s:[a,b], pw} (برای برندهٔ پنالتیِ بازیِ مساویِ حذفی)
+        let arr = null, pw = null;
+        if (Array.isArray(val)) arr = val;
+        else if (val && typeof val === 'object' && Array.isArray(val.s)) { arr = val.s; pw = val.pw; }
+        if (!arr || arr.length < 2) return;
+        const s1 = Number(arr[0]), s2 = Number(arr[1]);
         if (!Number.isFinite(s1) || !Number.isFinite(s2)) return;
         const id = Number(idStr);
 
@@ -7134,9 +7180,12 @@ async function updateRealScoresOnline(btn) {
           realScores[id] = [s1, s2];
           foundScores++;
         } else if (koIds.has(id)) {
+          const hasPw = (pw === 0 || pw === 1);
           const old = koReal[id];
-          if (!old || old[0] !== s1 || old[1] !== s2) changed++;
-          koReal[id] = [s1, s2];
+          const oldSc = scoreArray(old);
+          const oldPw = (old && !Array.isArray(old)) ? old.pw : null;
+          if (!oldSc || oldSc[0] !== s1 || oldSc[1] !== s2 || oldPw !== (hasPw ? pw : null)) changed++;
+          koReal[id] = hasPw ? { s: [s1, s2], pw } : [s1, s2];
           foundScores++;
         } else {
           unknownIds++;
@@ -7702,24 +7751,22 @@ function toggleProjTable() {
   buildRankView();
 }
 
-function projMoveHtml(delta) {
-  if (delta > 0) return `<span class="rank-move up">▲ ${fa(delta)}</span>`;
-  if (delta < 0) return `<span class="rank-move down">▼ ${fa(-delta)}</span>`;
-  return `<span class="rank-move same">—</span>`;
-}
-
 function buildRankView() {
   const container = document.getElementById('rank-view');
   container.innerHTML = '';
   const allPlayers = Object.keys(allPredictions).filter(p => Object.keys(allPredictions[p]).length > 0);
   const gradedCount = MATCHES.filter(m => realScores[m.id] !== undefined).length;
+  const koGraded = KO.filter(m => koReal[m.id] !== undefined).length;
+  const totalGraded = gradedCount + koGraded;
+  const totalMatches = MATCHES.length + KO.length;
+  const pctDone = totalMatches > 0 ? Math.round(totalGraded / totalMatches * 100) : 0;
 
   const summary = document.createElement('div');
   summary.className = 'rank-summary';
-  summary.innerHTML = (gradedCount > 0
-    ? `نتایج ${gradedCount} بازی از ${MATCHES.length} بازی ثبت شده‌اند`
-    : 'هنوز نتیجه‌ای ثبت نشده است') +
-    `<br><button class="share-img-btn" onclick="shareLeaderboardImage(this)">📸 اشتراک تصویر جدول</button>`;
+  summary.innerHTML = totalGraded > 0
+    ? `<div class="rank-progress-txt">${fa(totalGraded)} بازی از ${fa(totalMatches)} بازی ثبت شده · ${fa(pctDone)}٪</div>
+       <div class="rank-progress-bar"><div class="rank-progress-fill" style="width:${pctDone}%"></div></div>`
+    : 'هنوز نتیجه‌ای ثبت نشده است';
   container.appendChild(summary);
 
   if (allPlayers.length === 0) {
@@ -7741,8 +7788,13 @@ function buildRankView() {
   const rankContext = getLeaderboardContext(rankings);
   const badgeLeaders = buildBadgeLeaders(rankings);
   const projection = poissonMatchdayProjection();
+  const projActive = showProjTable && !!projection;
 
-  // دکمهٔ ضامن: نمایشِ «جدولِ احتمالیِ امشب» بر اساسِ پیش‌بینیِ پواسون
+  // درام جدول اول نمایش داده می‌شود (فقط در حالتِ عادی)
+  const drama = projActive ? null : buildLeaderboardDramaCard(rankings, rankContext, gradedCount);
+  if (drama) container.appendChild(drama);
+
+  // دکمهٔ ضامنِ «جدولِ احتمالیِ امشب» بعد از درام جدول
   if (projection) {
     const toggle = document.createElement('button');
     toggle.className = 'proj-toggle' + (showProjTable ? ' on' : '');
@@ -7753,10 +7805,6 @@ function buildRankView() {
     container.appendChild(toggle);
   }
 
-  const projActive = showProjTable && !!projection;
-  const curRank = {};
-  rankings.forEach((p, i) => { curRank[p.name] = i; });
-
   let displayRankings = rankings;
   if (projActive) {
     displayRankings = rankings
@@ -7764,26 +7812,36 @@ function buildRankView() {
       .sort((a, b) => b.projTotal - a.projTotal || b.netAcc - a.netAcc || b.exact - a.exact || b.gd - a.gd || a.faName.localeCompare(b.faName, 'fa'));
     const note = document.createElement('div');
     note.className = 'proj-note';
-    note.innerHTML = `🔮 جدولِ فرضی اگر پیش‌بینیِ پواسون برای ${fa(projection.count)} بازیِ روزِ بعد درست دربیاید`;
+    note.innerHTML = `🔮 جدولِ فرضی اگر پیش‌بینیِ پواسون برای ${fa(projection.count)} بازیِ امشب درست دربیاید`;
     container.appendChild(note);
   }
-
-  const drama = projActive ? null : buildLeaderboardDramaCard(rankings, rankContext, gradedCount);
-  if (drama) container.appendChild(drama);
 
   const medals = ['🥇', '🥈', '🥉'];
   displayRankings.forEach((p, i) => {
     const card = document.createElement('div');
-    const moveHtml = projActive
-      ? projMoveHtml(curRank[p.name] - i)
-      : renderMovePill(rankContext.movements[p.name]);
+    // جدولِ احتمالی: فقط نام و امتیاز
+    if (projActive) {
+      card.className = `rank-card proj${p.name === currentPlayer ? ' me' : ''}`;
+      card.innerHTML = `
+        <div class="rank-pos">${i < 3 ? medals[i] : i + 1}</div>
+        <div class="rank-avatar">${p.avatar}</div>
+        <div class="rank-info">
+          <div class="rank-name-line">
+            <span class="rank-name">${escapeHtml(p.faName)}${p.name === currentPlayer ? ' (شما)' : ''}</span>
+          </div>
+        </div>
+        <div class="rank-pts-col">
+          <div class="rank-pts">${p.projTotal}</div>
+          <div class="rank-pts-lbl proj">${p.projGain > 0 ? '+' + fa(p.projGain) : fa(p.projGain)} احتمالی</div>
+        </div>`;
+      container.appendChild(card);
+      return;
+    }
+    const moveHtml = renderMovePill(rankContext.movements[p.name]);
     const sigHtml = renderSignatureTag(p.name);
     const badgesHtml = renderPredictionBadges(p.name, p, badgeLeaders, sigHtml);
     const last10Html = renderLast10Dots(p.name);
-    const ptsHtml = projActive
-      ? `<div class="rank-pts">${p.projTotal}</div><div class="rank-pts-lbl proj">${p.projGain > 0 ? '+' + fa(p.projGain) : fa(p.projGain)} احتمالی</div>`
-      : `<div class="rank-pts">${p.total}</div><div class="rank-pts-lbl">امتیاز</div>`;
-    card.className = `rank-card${p.name === currentPlayer ? ' me' : ''}${projActive ? ' proj' : ''}`;
+    card.className = `rank-card${p.name === currentPlayer ? ' me' : ''}`;
     card.innerHTML = `
       <div class="rank-pos">${i < 3 ? medals[i] : i + 1}</div>
       <div class="rank-avatar">${p.avatar}</div>
@@ -7803,10 +7861,17 @@ function buildRankView() {
         ${last10Html}
       </div>
       <div class="rank-pts-col">
-        ${ptsHtml}
+        <div class="rank-pts">${p.total}</div>
+        <div class="rank-pts-lbl">امتیاز</div>
       </div>`;
     container.appendChild(card);
   });
+
+  // دکمهٔ اشتراکِ تصویر بلافاصله بعد از فهرستِ بازیکنان
+  const shareWrap = document.createElement('div');
+  shareWrap.style.cssText = 'text-align:center;margin:.8rem 0 1rem';
+  shareWrap.innerHTML = `<button class="share-img-btn" onclick="shareLeaderboardImage(this)">📸 اشتراک تصویر جدول</button>`;
+  container.appendChild(shareWrap);
 
   container.appendChild(buildRankEvolutionCard(rankings));
   container.appendChild(buildGoalHistogramCard(rankings));
@@ -8473,18 +8538,22 @@ function poissonPrediction(team1, team2, st) {
     if (x === 1 && y === 1) return 1 - RHO;
     return 1;
   };
-  let total = 0, best = { p: -1, i: 0, j: 0 }, pW1 = 0, pD = 0, pW2 = 0;
+  let total = 0, pW1 = 0, pD = 0, pW2 = 0;
+  const cells = [];
   for (let i = 0; i <= MAXG; i++) {
     for (let j = 0; j <= MAXG; j++) {
       const p = poissonPmf(i, lambda1) * poissonPmf(j, lambda2) * Math.max(tau(i, j), 0);
       total += p;
-      if (p > best.p) best = { p, i, j };
+      cells.push({ i, j, p });
       if (i > j) pW1 += p; else if (i < j) pW2 += p; else pD += p;
     }
   }
+  cells.sort((a, b) => b.p - a.p);
+  const top = cells.slice(0, 3).map(c => ({ score: [c.i, c.j], prob: c.p / total }));
   return {
-    score: [best.i, best.j],
-    scoreProb: best.p / total,
+    score: top[0].score,
+    scoreProb: top[0].prob,
+    top,
     pW1: pW1 / total, pD: pD / total, pW2: pW2 / total
   };
 }
@@ -8499,14 +8568,17 @@ function poissonBlockHtml(info, pm, real) {
     const label = pts === 8 ? '🎯 نتیجهٔ دقیق' : pts === 4 ? '✅ تفاضلِ گل درست' : pts === 2 ? '✅ برندهٔ درست' : '❌ اشتباه';
     verdict = `<div class="pm-verdict ${pts > 0 ? 'ok' : 'bad'}">مدل: ${label} (${fa(pts)}/۸)</div>`;
   }
+  const alt = (pm.top || []).slice(1, 3)
+    .map(t => `${fa(t.score[0])}-${fa(t.score[1])} (${pc(t.prob)}٪)`).join('  ·  ');
   return `<div class="pm-box${backtest ? ' bt' : ''}">
-    <div class="pm-title">🧮 مدلِ آماری (پواسون)</div>
+    <div class="pm-title">🧮 پیش‌بینیِ مدلِ آماری (پواسون)</div>
+    <div class="pm-prob">${backtest ? 'پیش‌بینیِ مدل' : 'محتمل‌ترین نتیجه'} · احتمال ${pc(pm.scoreProb)}٪</div>
     <div class="pm-main">
       <span class="pm-team">${info.f1} ${escapeHtml(info.fa1)}</span>
       <span class="pm-score">${fa(pm.score[1])} - ${fa(pm.score[0])}</span>
       <span class="pm-team">${escapeHtml(info.fa2)} ${info.f2}</span>
     </div>
-    <div class="pm-prob">${backtest ? 'پیش‌بینیِ مدل' : 'محتمل‌ترین نتیجه'} · احتمال ${pc(pm.scoreProb)}٪</div>
+    ${alt ? `<div class="pm-alt">گزینه‌های بعدی: ${alt}</div>` : ''}
     <div class="pm-odds">
       <span style="color:var(--green-light)">بردِ ${info.f1} ${pc(pm.pW1)}٪</span>
       <span style="color:var(--dim)">تساوی ${pc(pm.pD)}٪</span>
