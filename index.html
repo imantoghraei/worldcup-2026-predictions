@@ -6746,6 +6746,7 @@ function showKnockoutTab(round) {
   document.getElementById('knockout-view').style.display = 'block';
   buildKnockoutView(round);
   maybeAutoUpdateRealTableOnline();
+  maybeAutoUpdateRealScoresOnline();   // نتایجِ حذفی را هم بارگذاری کن تا نامِ برندگانِ R32 در R16 دربیاید
 }
 
 function buildKnockoutView(roundOverride) {
@@ -7224,6 +7225,7 @@ async function updateRealScoresOnline(btn) {
     else if (currentFilter === 'daily') buildDailyView();
     else if (currentFilter === 'compare') { buildPlayersBar(); buildResultsList(); scrollToCurrentDateIn('results-list'); }
     else if (currentFilter === 'real-table') buildRealTableView();
+    else if (currentFilter === 'ko') buildKnockoutView(currentKoRound);
     else if (currentFilter === 'all' || currentFilter === 'done' || currentFilter === 'todo') buildMatchList();
 
     if (foundScores > 0) {
