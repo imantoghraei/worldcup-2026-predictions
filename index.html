@@ -203,7 +203,9 @@ button{cursor:pointer;font-family:inherit}
 .qual-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.45rem .6rem;font-size:.72rem}
 .qual-name{font-weight:800;color:var(--text);white-space:nowrap}
 .qual-detail{color:var(--dim);line-height:1.55;text-align:right;flex:1}
+.qual-points{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;justify-content:flex-end}
 .qual-pts{font-weight:900;color:var(--gold);white-space:nowrap}
+.qual-match-pts{font-size:.66rem;font-weight:900;color:var(--green-light);white-space:nowrap}
 .qual-empty{color:var(--dim);font-size:.75rem;text-align:center;padding:.8rem .4rem;line-height:1.7}
 .table-link{color:var(--gold);font-weight:800;text-decoration:none}
 
@@ -7353,15 +7355,31 @@ function qualificationPlayers() {
   return Object.keys(allPredictions).filter(p => Object.keys(allPredictions[p] || {}).length > 0);
 }
 
+function calcGroupMatchPoints(playerName, grp) {
+  const preds = allPredictions[playerName] || {};
+  let pts = 0, scored = 0;
+  MATCHES.filter(m => m.grp === grp).forEach(m => {
+    if (scoreArray(realScores[m.id]) === null) return;
+    scored++;
+    const matchPts = calcScore(preds[m.id], realScores[m.id]);
+    pts += matchPts === null ? 0 : matchPts;
+  });
+  return { pts, scored, active: scored > 0 };
+}
+
 function qualifierRowHtml(row) {
   const name = playerDisplayName(row.name);
   const correct = row.correct && row.correct.length
     ? row.correct.map(teamFa).join('، ')
     : 'بدون تیم درست';
+  const matchPts = row.matchPts !== undefined
+    ? `<span class="qual-match-pts">بازی‌ها: ${row.matchPts} امتیاز</span>`
+    : '';
+  const qualLabel = row.matchPts !== undefined ? `صعود: ${row.pts} امتیاز` : `${row.pts} امتیاز`;
   return `<div class="qual-row">
     <span class="qual-name">${escapeHtml(name)}</span>
     <span class="qual-detail">${escapeHtml(correct)}</span>
-    <span class="qual-pts">${row.pts} امتیاز</span>
+    <span class="qual-points"><span class="qual-pts">${qualLabel}</span>${matchPts}</span>
   </div>`;
 }
 
@@ -7375,7 +7393,7 @@ function sortQualifierRows(rows) {
 
 function buildQualificationScoreGrid(players, qByName, getter, inactiveText) {
   if (!players.length) return '<div class="qual-empty">هنوز پیش‌بینی‌ای برای امتیازدهی وجود ندارد.</div>';
-  const rows = players.map(name => ({ name, ...getter(qByName[name]) }));
+  const rows = players.map(name => ({ name, ...getter(qByName[name], name) }));
   if (rows.every(r => !r.active)) return `<div class="qual-empty">${escapeHtml(inactiveText)}</div>`;
   return `<div class="qual-grid">${sortQualifierRows(rows).map(qualifierRowHtml).join('')}</div>`;
 }
@@ -7404,6 +7422,13 @@ function buildRealTableView() {
   const qByName = {};
   players.forEach(name => { qByName[name] = calcQualifierPoints(name); });
   const validGroups = groupTeamsMap();
+  const groupMatchPtsByName = {};
+  players.forEach(name => {
+    groupMatchPtsByName[name] = {};
+    GROUP_LETTERS.forEach(grp => {
+      groupMatchPtsByName[name][grp] = calcGroupMatchPoints(name, grp);
+    });
+  });
 
   GROUP_LETTERS.forEach(grp => {
     const order = realTableGroupOrder(grp);
@@ -7427,11 +7452,12 @@ function buildRealTableView() {
         <tbody>${rows}</tbody>
       </table>
       ${missingCount && order.length ? `<div class="qual-empty">${missingCount} رتبه بعدی این گروه هنوز وارد نشده است.</div>` : ''}
-      <div class="recap-meta" style="margin:.75rem 0 .25rem">امتیاز پیش‌بینی‌گران برای صعود از این گروه</div>
-      ${buildQualificationScoreGrid(players, qByName, q => ({
+      <div class="recap-meta" style="margin:.75rem 0 .25rem">امتیاز پیش‌بینی‌گران برای صعود از این گروه <span style="color:var(--green-light)">· امتیاز بازی‌های گروه</span></div>
+      ${buildQualificationScoreGrid(players, qByName, (q, name) => ({
         pts: q.details[grp].pts,
         correct: q.details[grp].correct,
-        active: q.details[grp].active
+        matchPts: groupMatchPtsByName[name] && groupMatchPtsByName[name][grp] ? groupMatchPtsByName[name][grp].pts : 0,
+        active: q.details[grp].active || (groupMatchPtsByName[name] && groupMatchPtsByName[name][grp] && groupMatchPtsByName[name][grp].active)
       }), 'برای این گروه هنوز تیم اول و دوم در table.json ثبت نشده‌اند.')}
     `;
     container.appendChild(sec);
